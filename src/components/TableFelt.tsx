@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { computeProfileScale } from '../constants/cardTray';
+import { computeProfileLayoutState } from '../constants/cardTray';
 import type { GameState, PileState } from '../game/types';
 import { CenterPile } from './CenterPile';
 import { PlayerProfile } from './PlayerProfile';
@@ -37,19 +37,31 @@ export function TableFelt({
 }: TableFeltProps) {
   const fieldRef = useRef<HTMLDivElement>(null);
   const feltRef = useRef<HTMLDivElement>(null);
-  const [profileScale, setProfileScale] = useState(1);
+  const [profileLayout, setProfileLayout] = useState(() =>
+    computeProfileLayoutState(0, 0, 0, 0),
+  );
 
   useLayoutEffect(() => {
     const felt = feltRef.current;
+    const field = fieldRef.current;
     if (!felt) return;
 
     const recompute = () => {
-      setProfileScale(computeProfileScale(felt.clientWidth, felt.clientHeight));
+      const fieldEl = fieldRef.current;
+      setProfileLayout(
+        computeProfileLayoutState(
+          felt.clientWidth,
+          felt.clientHeight,
+          fieldEl?.clientWidth ?? felt.clientWidth,
+          fieldEl?.clientHeight ?? felt.clientHeight,
+        ),
+      );
     };
 
     recompute();
     const observer = new ResizeObserver(recompute);
     observer.observe(felt);
+    if (field) observer.observe(field);
     window.addEventListener('resize', recompute);
     return () => {
       observer.disconnect();
@@ -58,7 +70,7 @@ export function TableFelt({
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 w-full items-center justify-center p-1 sm:p-2">
+    <div className="flex h-full min-h-0 w-full">
       <div className="table-rim relative h-full max-h-full w-full max-w-full">
         <span className="corner-ornament corner-tl" aria-hidden />
         <span className="corner-ornament corner-tr" aria-hidden />
@@ -74,7 +86,7 @@ export function TableFelt({
             isActive={activePlayerIndex === 1}
             isLocal={false}
             position="top"
-            profileScale={profileScale}
+            profileScale={profileLayout.scale}
           />
           <PlayerProfile
             player={players[3]!}
@@ -84,7 +96,8 @@ export function TableFelt({
             isActive={activePlayerIndex === 3}
             isLocal={false}
             position="left"
-            profileScale={profileScale}
+            profileScale={profileLayout.scale}
+            layout={profileLayout.sideVertical ? 'vertical' : 'horizontal'}
           />
           <PlayerProfile
             player={players[2]!}
@@ -94,7 +107,8 @@ export function TableFelt({
             isActive={activePlayerIndex === 2}
             isLocal={false}
             position="right"
-            profileScale={profileScale}
+            profileScale={profileLayout.scale}
+            layout={profileLayout.sideVertical ? 'vertical' : 'horizontal'}
           />
           <PlayerProfile
             player={players[0]!}
@@ -104,7 +118,7 @@ export function TableFelt({
             isActive={activePlayerIndex === 0}
             isLocal
             position="bottom"
-            profileScale={profileScale}
+            profileScale={profileLayout.scale}
           />
 
           <div

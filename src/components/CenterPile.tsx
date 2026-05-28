@@ -8,8 +8,7 @@ import {
   PILE_SHELL_MIN_HEIGHT,
   PILE_SHELL_MIN_WIDTH,
   PILE_SHELL_WIDTH_RATIO,
-  PILE_TARGET_FILL,
-  computeTrayCardScale,
+  computePileCardScale,
   fitPileShellDimension,
   pileFiveCardFootprint,
 } from '../constants/cardTray';
@@ -38,7 +37,13 @@ const PILE_CARD_SLOT =
   'center-pile-cards relative z-10 flex min-h-0 w-full flex-1 items-center justify-center overflow-visible';
 
 const PILE_SHELL =
-  'center-pile shrink-0 rounded-xl border border-[#c9a227]/25 bg-[#062f22]/80';
+  'center-pile shrink-0 rounded-xl border border-[#c9a227]/25 bg-[#062f22]/80 shadow-[0_8px_32px_rgba(0,0,0,0.35)]';
+
+const BADGE_CLASS =
+  'shrink-0 rounded-full bg-amber-500/20 px-3 py-0.5 font-serif text-[clamp(0.6rem,1.2vh,0.75rem)] font-bold uppercase tracking-widest text-amber-100';
+
+const FOOTER_CLASS =
+  'shrink-0 text-[clamp(0.6rem,1.2vh,0.75rem)] font-medium text-emerald-100/85';
 
 export function CenterPile({
   pile,
@@ -54,9 +59,8 @@ export function CenterPile({
   onDrop,
 }: CenterPileProps) {
   const pileShellRef = useRef<HTMLDivElement>(null);
-  const pileCardSlotRef = useRef<HTMLDivElement>(null);
-  const pileCardsRef = useRef<HTMLDivElement>(null);
   const [pileCardScale, setPileCardScale] = useState(1);
+  const [shellSize, setShellSize] = useState({ width: 0, height: 0 });
 
   const dropHighlight =
     droppable &&
@@ -69,13 +73,11 @@ export function CenterPile({
   const hasPile = pile != null;
   const combination = pile?.combination;
   const playedByIndex = pile?.playedByIndex ?? 0;
-  const cardCount = combination?.cards.length ?? 0;
+  const { width: comboWidth, height: comboHeight } = pileFiveCardFootprint();
 
   useLayoutEffect(() => {
     const field = fieldRef.current;
-    const shell = pileShellRef.current;
-    const cardSlot = pileCardSlotRef.current;
-    if (!field || !shell) return;
+    if (!field) return;
 
     const recompute = () => {
       const fieldWidth = field.clientWidth;
@@ -94,41 +96,50 @@ export function CenterPile({
         PILE_SHELL_MAX_HEIGHT,
         PILE_SHELL_MIN_HEIGHT,
       );
-      shell.style.width = `${shellWidth}px`;
-      shell.style.height = `${shellHeight}px`;
-
-      const slotWidth = cardSlot?.clientWidth ?? shellWidth;
-      const slotHeight = cardSlot?.clientHeight ?? shellHeight * 0.68;
-      const { width: comboWidth, height: comboHeight } = pileFiveCardFootprint();
-
-      if (slotWidth <= 0 || slotHeight <= 0) {
-        setPileCardScale(1);
-        return;
-      }
-
-      setPileCardScale(
-        computeTrayCardScale(
-          slotWidth,
-          slotHeight,
-          comboWidth,
-          comboHeight,
-          PILE_TARGET_FILL,
-        ),
-      );
+      setShellSize({ width: shellWidth, height: shellHeight });
+      setPileCardScale(computePileCardScale(shellWidth, shellHeight));
     };
 
     recompute();
     const observer = new ResizeObserver(recompute);
     observer.observe(field);
-    observer.observe(shell);
-    if (cardSlot) observer.observe(cardSlot);
 
     window.addEventListener('resize', recompute);
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', recompute);
     };
-  }, [fieldRef, hasPile, cardCount]);
+  }, [fieldRef, comboWidth, comboHeight]);
+
+  const badgeLabel = hasPile && combination
+    ? isFreeLead
+      ? 'Free lead'
+      : combinationLabel(combination.type)
+    : isOpeningTurn
+      ? 'Opening lead'
+      : 'Center trick';
+
+  const footer = hasPile && combination ? (
+    isFreeLead && leadPlayerIndex != null ? (
+      <>
+        <span className="text-amber-200">{playerLabel(leadPlayerIndex)}</span> may lead
+      </>
+    ) : (
+      <>
+        Played by <span className="text-[#f5f0e6]">{playerLabel(playedByIndex)}</span>
+      </>
+    )
+  ) : (
+    <>
+      {isOpeningTurn ? 'Include 3♦ in your play' : 'Play to lead'}
+      {droppable && (
+        <>
+          {' '}
+          <span className="text-amber-200/90">· drag cards here</span>
+        </>
+      )}
+    </>
+  );
 
   return (
     <div
@@ -137,75 +148,59 @@ export function CenterPile({
       onDragLeave={droppable ? onDragLeave : undefined}
       onDragOver={droppable ? onDragOver : undefined}
       onDrop={droppable ? onDrop : undefined}
+      style={
+        shellSize.width > 0 && shellSize.height > 0
+          ? { width: shellSize.width, height: shellSize.height }
+          : undefined
+      }
       className={[
         'relative flex flex-col items-center justify-center gap-1.5 overflow-visible px-3 py-2.5 text-center backdrop-blur-md',
         PILE_SHELL,
-        hasPile ? 'shadow-[0_8px_32px_rgba(0,0,0,0.35)]' : 'border-emerald-300/35 bg-[#062f22]/75 backdrop-blur-sm',
+        !hasPile ? 'border-emerald-300/35 bg-[#062f22]/75' : '',
         isFreeLead ? 'ring-1 ring-amber-400/35' : '',
         dropHighlight,
         dropIdle,
       ].join(' ')}
     >
-      {hasPile && combination ? (
-        <>
-          <span className="shrink-0 rounded-full bg-amber-500/20 px-3 py-0.5 font-serif text-[clamp(0.6rem,1.2vh,0.75rem)] font-bold uppercase tracking-widest text-amber-100">
-            {isFreeLead ? 'Free lead' : combinationLabel(combination.type)}
-          </span>
-          <div ref={pileCardSlotRef} className={PILE_CARD_SLOT}>
-            <div
-              ref={pileCardsRef}
-              className={[
-                'inline-flex items-end justify-center overflow-visible',
-                isFreeLead ? 'opacity-70' : '',
-              ].join(' ')}
-              style={{
-                transform: `scale(${pileCardScale})`,
-                transformOrigin: 'center center',
-              }}
-            >
+      <span className={BADGE_CLASS}>{badgeLabel}</span>
+
+      <div className={PILE_CARD_SLOT}>
+        <div
+          className={[
+            'relative overflow-visible',
+            hasPile && isFreeLead ? 'opacity-70' : '',
+          ].join(' ')}
+          style={{
+            width: comboWidth,
+            height: comboHeight,
+            transform: `scale(${pileCardScale})`,
+            transformOrigin: 'center center',
+          }}
+        >
+          {hasPile && combination ? (
+            <div className="absolute bottom-0 left-1/2 inline-flex -translate-x-1/2 items-end justify-center overflow-visible">
               {combination.cards.map((card, i) => (
                 <div
                   key={card.id}
-                  className={[
-                    'shrink-0 first:ml-0',
-                    i > 0 ? PILE_CARD_OVERLAP : '',
-                  ].join(' ')}
+                  className={['shrink-0 first:ml-0', i > 0 ? PILE_CARD_OVERLAP : ''].join(' ')}
                   style={{ zIndex: i }}
                 >
                   <PlayingCard card={card} size="pile" />
                 </div>
               ))}
             </div>
-          </div>
-          <p className="shrink-0 text-[clamp(0.6rem,1.2vh,0.75rem)] font-medium text-emerald-100/85">
-            {isFreeLead && leadPlayerIndex != null ? (
-              <>
-                <span className="text-amber-200">{playerLabel(leadPlayerIndex)}</span>{' '}
-                may lead
-              </>
-            ) : (
-              <>
-                Played by{' '}
-                <span className="text-[#f5f0e6]">{playerLabel(playedByIndex)}</span>
-              </>
-            )}
-          </p>
-        </>
-      ) : (
-        <>
-          <div ref={pileCardSlotRef} className={`${PILE_CARD_SLOT} min-h-[4rem]`} aria-hidden />
-          <p className="font-serif text-[clamp(0.75rem,1.6vh,1rem)] font-semibold text-emerald-50">
-            {isOpeningTurn
-              ? 'Opening lead — include 3♦'
-              : 'Center trick — play to lead'}
-          </p>
-          {droppable && (
-            <p className="text-[clamp(0.6rem,1.3vh,0.75rem)] text-amber-200/85">
-              Drag cards here to play
+          ) : (
+            <p
+              className="absolute inset-0 flex items-center justify-center px-3 text-center font-serif text-[clamp(0.7rem,1.4vh,0.9rem)] font-semibold leading-snug text-emerald-50/90"
+              aria-hidden
+            >
+              {isOpeningTurn ? 'Drop your opening play' : 'Drop cards to play'}
             </p>
           )}
-        </>
-      )}
+        </div>
+      </div>
+
+      <p className={FOOTER_CLASS}>{footer}</p>
     </div>
   );
 }

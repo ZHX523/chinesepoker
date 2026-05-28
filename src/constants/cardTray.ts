@@ -15,8 +15,9 @@ export const HAND_TARGET_FILL = TRAY_TARGET_FILL * 1.1 * 1.03;
 /** At max expansion (fewest cards), fill is reduced by this fraction (3% smaller peak) */
 export const HAND_PEAK_FILL_REDUCTION = 0.03;
 export const HAND_MAX_SCALE = TRAY_MAX_SCALE * (1 - HAND_PEAK_FILL_REDUCTION);
-/** Fill factor for center pile cards (+10% over previous 0.75) */
-export const PILE_TARGET_FILL = 0.75 * 1.1;
+/** Fill factor — share of the interior card slot the 5-card combo occupies */
+export const PILE_TARGET_FILL = 0.9;
+export const PILE_MAX_SCALE = TRAY_MAX_SCALE;
 /** Shell is always sized for five overlapping cards; scales with play field only */
 export const PILE_COMBO_CARD_COUNT = 5;
 export const PILE_SHELL_WIDTH_RATIO = 0.86;
@@ -26,6 +27,8 @@ export const PILE_SHELL_MAX_HEIGHT = 340;
 /** Absolute floor — never larger than the play field (see fitPileShellDimension) */
 export const PILE_SHELL_MIN_WIDTH = 160;
 export const PILE_SHELL_MIN_HEIGHT = 120;
+/** Uniform bump for center pile shell (+35% over base ratios/caps) */
+export const PILE_SHELL_SIZE_FACTOR = 1.35;
 
 /** Unscaled pile card footprint (scale transform handles responsiveness) */
 export const PILE_CARD_SIZE_CLASS =
@@ -44,17 +47,50 @@ export function pileFiveCardFootprint(): { width: number; height: number } {
   return { width, height: PILE_BASE_CARD_HEIGHT_PX };
 }
 
-/** Size the violet shell from the play field; always fits inside the field when shrunk */
+/** Interior card area inside the pile shell (badge + footer reserved) */
+export const PILE_SHELL_PADDING_X = 24;
+export const PILE_SHELL_CHROME_Y = 82;
+
+export function pileCardSlotDimensions(
+  shellWidth: number,
+  shellHeight: number,
+): { width: number; height: number } {
+  return {
+    width: Math.max(0, shellWidth - PILE_SHELL_PADDING_X),
+    height: Math.max(0, shellHeight - PILE_SHELL_CHROME_Y),
+  };
+}
+
+/** Scale pile cards from shell size — always sized for a 5-card footprint */
+export function computePileCardScale(shellWidth: number, shellHeight: number): number {
+  const { width: slotWidth, height: slotHeight } = pileCardSlotDimensions(
+    shellWidth,
+    shellHeight,
+  );
+  const { width: comboWidth, height: comboHeight } = pileFiveCardFootprint();
+  return computeTrayCardScale(
+    slotWidth,
+    slotHeight,
+    comboWidth,
+    comboHeight,
+    PILE_TARGET_FILL,
+    PILE_MAX_SCALE,
+  );
+}
+
+/** Size the center pile shell from the play field; always fits inside the field when shrunk */
 export function fitPileShellDimension(
   fieldDim: number,
   ratio: number,
   maxCap: number,
   minCap: number,
 ): number {
-  if (fieldDim <= 0) return minCap;
-  const maxAllowed = Math.min(maxCap, fieldDim - 12);
-  const minAllowed = Math.min(minCap, maxAllowed);
-  const target = fieldDim * ratio;
+  if (fieldDim <= 0) return minCap * PILE_SHELL_SIZE_FACTOR;
+  const scale = PILE_SHELL_SIZE_FACTOR;
+  const fieldMargin = 8;
+  const maxAllowed = Math.min(maxCap * scale, fieldDim - fieldMargin);
+  const minAllowed = Math.min(minCap * scale, maxAllowed);
+  const target = fieldDim * ratio * scale;
   return Math.max(minAllowed, Math.min(target, maxAllowed));
 }
 
@@ -93,8 +129,13 @@ export function computeTrayCardScale(
 /** Scale seat profiles with the felt so they do not crowd the board */
 export const PROFILE_REF_WIDTH = 760;
 export const PROFILE_REF_HEIGHT = 540;
-export const PROFILE_MIN_SCALE = 0.52;
+export const PROFILE_MIN_SCALE = 0.45;
 export const PROFILE_MAX_SCALE = 1;
+/** Unscaled profile footprint (horizontal: avatar overlap + card) */
+export const PROFILE_HORIZONTAL_WIDTH_PX = 250;
+export const PROFILE_VERTICAL_WIDTH_PX = 132;
+export const PROFILE_SIDE_INSET_RATIO = 0.02;
+export const PROFILE_SIDE_CLEARANCE_PX = 10;
 
 export function computeProfileScale(feltWidth: number, feltHeight: number): number {
   if (feltWidth <= 0 || feltHeight <= 0) return 1;
@@ -103,4 +144,49 @@ export function computeProfileScale(feltWidth: number, feltHeight: number): numb
     feltHeight / PROFILE_REF_HEIGHT,
   );
   return Math.max(PROFILE_MIN_SCALE, Math.min(ratio, PROFILE_MAX_SCALE));
+}
+
+export interface ProfileLayoutState {
+  scale: number;
+  sideVertical: boolean;
+}
+
+/** Fit profiles beside the center pile; switch left/right to vertical when tight */
+export function computeProfileLayoutState(
+  feltWidth: number,
+  feltHeight: number,
+  fieldWidth: number,
+  fieldHeight: number,
+): ProfileLayoutState {
+  let scale = computeProfileScale(feltWidth, feltHeight);
+  if (fieldWidth <= 0 || fieldHeight <= 0) {
+    return { scale, sideVertical: false };
+  }
+
+  const pileWidth = fitPileShellDimension(
+    fieldWidth,
+    PILE_SHELL_WIDTH_RATIO,
+    PILE_SHELL_MAX_WIDTH,
+    PILE_SHELL_MIN_WIDTH,
+  );
+  const sideInset = fieldWidth * PROFILE_SIDE_INSET_RATIO;
+  const sideLane =
+    (fieldWidth - pileWidth) / 2 - sideInset - PROFILE_SIDE_CLEARANCE_PX;
+
+  if (sideLane <= 0) {
+    return { scale: PROFILE_MIN_SCALE, sideVertical: true };
+  }
+
+  const horizontalWidth = PROFILE_HORIZONTAL_WIDTH_PX * scale;
+  if (horizontalWidth > sideLane) {
+    const verticalWidth = PROFILE_VERTICAL_WIDTH_PX * scale;
+    if (verticalWidth <= sideLane) {
+      return { scale, sideVertical: true };
+    }
+    const fitScale = sideLane / PROFILE_VERTICAL_WIDTH_PX;
+    scale = Math.max(PROFILE_MIN_SCALE, Math.min(scale, fitScale));
+    return { scale, sideVertical: true };
+  }
+
+  return { scale, sideVertical: false };
 }
