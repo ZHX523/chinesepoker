@@ -1,0 +1,23 @@
+import type { Player, ScoreEntry } from './types';
+
+export function penaltyForCardCount(count: number): number {
+  if (count <= 0) return 0;
+  if (count <= 9) return count;
+  if (count <= 12) return count * 2;
+  return count * 3;
+}
+
+export function calculateScores(
+  players: Player[],
+  winnerId: number,
+): ScoreEntry[] {
+  return players.map((p) => {
+    const cardsLeft = p.id === winnerId ? 0 : p.hand.length;
+    return {
+      playerId: p.id,
+      name: p.name,
+      cardsLeft,
+      penalty: penaltyForCardCount(cardsLeft),
+    };
+  });
+}
