@@ -29,7 +29,7 @@ export function PassButton({ disabled, onClick, className = '' }: PassButtonProp
         aria-hidden
       >
         <span className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#1f7a5c] via-[#0f5c44] to-[#083d2e] shadow-[inset_0_2px_8px_rgba(255,255,255,0.2),inset_0_-4px_10px_rgba(0,0,0,0.35)]">
-          <span className="font-bold tracking-widest text-[#f5f0e6] drop-shadow-sm [font-size:min(1.35rem,22cqmin)]">
+          <span className="font-bold tracking-widest text-[#f5f0e6] drop-shadow-sm [font-size:min(1.75rem,28cqmin)]">
             PASS
           </span>
         </span>

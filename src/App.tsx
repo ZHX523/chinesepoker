@@ -197,7 +197,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#0a1210]">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-visible">
+      <div className="flex min-h-0 min-w-0 flex-[4] flex-col overflow-x-hidden overflow-y-visible">
         <GameTable
           state={state}
           handOrder={handOrder}

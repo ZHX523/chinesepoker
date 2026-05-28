@@ -10,79 +10,111 @@ interface PlayerProfileProps {
   isActive: boolean;
   isLocal: boolean;
   position: TableSeatPosition;
+  profileScale?: number;
 }
 
-const ZODIAC_ICON: Record<number, string> = {
-  0: '🐼',
-  1: '🐯',
-  2: '🐉',
-  3: '🦅',
-};
+/** Stable “random” icon per player id */
+const PROFILE_ICONS = [
+  '🐼',
+  '🐯',
+  '🐉',
+  '🦅',
+  '🦊',
+  '🐸',
+  '🦉',
+  '🐙',
+  '🦁',
+  '🐨',
+  '🦄',
+  '🐲',
+  '🦋',
+  '🐺',
+  '🦈',
+  '🐢',
+] as const;
+
+function profileIcon(playerId: number): string {
+  return PROFILE_ICONS[playerId % PROFILE_ICONS.length] ?? '🀄';
+}
 
 const POSITION_CLASS: Record<TableSeatPosition, string> = {
-  top: 'left-1/2 top-[4%] -translate-x-1/2',
-  left: 'left-[3%] top-1/2 -translate-y-1/2',
-  right: 'right-[3%] top-1/2 -translate-y-1/2',
-  bottom: 'bottom-[6%] left-1/2 -translate-x-1/2',
+  top: 'left-1/2 top-[3%] -translate-x-1/2',
+  left: 'left-[2%] top-1/2 -translate-y-1/2',
+  right: 'right-[2%] top-1/2 -translate-y-1/2',
+  bottom: 'bottom-[5%] left-1/2 -translate-x-1/2',
+};
+
+/** Scale toward table center so profiles tuck inward when shrunk */
+const SCALE_ORIGIN: Record<TableSeatPosition, string> = {
+  top: 'center bottom',
+  left: 'right center',
+  right: 'left center',
+  bottom: 'center top',
 };
 
 export function PlayerProfile({
   player,
-  displayNumber,
+  displayNumber: _displayNumber,
   handCount,
   reserveCount,
   isActive,
   isLocal,
   position,
+  profileScale = 1,
 }: PlayerProfileProps) {
-  const icon = ZODIAC_ICON[player.id] ?? '🀄';
+  const icon = profileIcon(player.id);
+  const totalCards = handCount + reserveCount;
 
   return (
-    <div
-      className={[
-        'absolute z-20 w-[8.5rem] max-w-[34vw] rounded-lg px-2 py-1.5 text-center shadow-lg transition-all duration-300 sm:w-[9.5rem]',
-        'border bg-[#1a0f0c]/88 backdrop-blur-sm',
-        isLocal
-          ? 'border-amber-400/90 shadow-[0_0_18px_rgba(212,175,55,0.35)]'
-          : 'border-[#5c3d2e]/80',
-        isActive && !isLocal ? 'ring-2 ring-amber-300/50' : '',
-        POSITION_CLASS[position],
-      ].join(' ')}
-    >
-      <div className="flex items-center gap-2">
-        <div
-          className={[
-            'relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg',
-            'bg-gradient-to-br from-[#3d2418] to-[#2d1510] ring-1 ring-[#c9a227]/40',
-          ].join(' ')}
-          aria-hidden
-        >
-          {icon}
-          {isLocal && (
-            <span
-              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-bold text-[#1a0f0c]"
-              title="You"
-            >
-              ✓
-            </span>
-          )}
-        </div>
-        <div className="min-w-0 flex-1 text-left">
-          <p className="truncate text-[10px] font-bold uppercase tracking-wide text-amber-100/90">
-            P{displayNumber}
-          </p>
-          <p
+    <div className={['absolute z-20', POSITION_CLASS[position]].join(' ')}>
+      <div
+        className="pl-[2.3rem] transition-transform duration-200 sm:pl-[2.55rem]"
+        style={{
+          transform: `scale(${profileScale})`,
+          transformOrigin: SCALE_ORIGIN[position],
+        }}
+      >
+        <div className="relative">
+          {/* Full circle avatar — half overlaps the card, half extends left */}
+          <div
             className={[
-              'truncate text-xs font-semibold',
-              isLocal ? 'text-amber-200' : 'text-[#f5f0e6]',
+              'absolute left-0 top-1/2 z-10 flex h-[4.5rem] w-[4.5rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center',
+              'rounded-full bg-gradient-to-br from-[#3d2418] to-[#2d1510]',
+              'ring-2 ring-[#c9a227]/55 shadow-md sm:h-[5rem] sm:w-[5rem]',
+              isLocal ? 'ring-amber-400/80' : '',
+            ].join(' ')}
+            aria-hidden
+          >
+            <span className="text-[1.75rem] leading-none sm:text-[2rem]">{icon}</span>
+            {isLocal && (
+              <span
+                className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-[#1a0f0c] ring-1 ring-[#1a0f0c]/40"
+                title="You"
+              >
+                ✓
+              </span>
+            )}
+          </div>
+
+          {/* Rectangular profile card */}
+          <div
+            className={[
+              'min-w-[12rem] rounded-lg border py-[0.7125rem] pl-[3rem] pr-4 text-center shadow-lg backdrop-blur-sm',
+              'sm:min-w-[13.5rem] sm:py-[0.83125rem] sm:pl-[3.35rem] sm:pr-5',
+              'bg-[#1a0f0c]/90',
+              isLocal
+                ? 'border-amber-400/90 shadow-[0_0_20px_rgba(212,175,55,0.35)]'
+                : 'border-[#5c3d2e]/85',
+              isActive && !isLocal ? 'ring-2 ring-amber-300/50' : '',
             ].join(' ')}
           >
-            {player.name}
-          </p>
-          <p className="font-mono text-[10px] text-emerald-200/75">
-            {handCount} cards
-            {reserveCount > 0 ? ` · ${reserveCount} held` : ''}
-          </p>
+            <p className="truncate font-serif text-base font-bold leading-tight text-amber-100/95 sm:text-lg">
+              {player.name}
+            </p>
+            <p className="mt-[0.475rem] font-serif text-base font-semibold leading-tight tabular-nums text-emerald-100/90 sm:text-lg">
+              {totalCards} cards
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ import {
 import {
   clearDragSession,
   getReservePlayIds,
+  getReserveSlotIndex,
   isHandDrag,
   isReserveDrag,
   startHandDrag,
@@ -101,11 +102,9 @@ export function GameTable({
         : [cardId];
       const ids = fromSelection.length > 0 ? fromSelection : [cardId];
 
-      startHandDrag(ids);
+      startHandDrag(ids, cardId);
       setCardDragData(event.dataTransfer, ids);
-      if (ids.length === 1) {
-        setReorderDragData(event.dataTransfer, ids[0]!);
-      }
+      setReorderDragData(event.dataTransfer, cardId);
       setCardDragPreview(
         event.dataTransfer,
         event.currentTarget,
@@ -125,13 +124,17 @@ export function GameTable({
 
       if (!isReserveDrag()) return;
 
-      const ids = getCardDragData(event.dataTransfer);
+      const slotIdx = getReserveSlotIndex();
+      let ids = getCardDragData(event.dataTransfer);
+      if (slotIdx !== null && reservedCombos[slotIdx]?.length) {
+        ids = reservedCombos[slotIdx]!;
+      }
       if (ids && ids.length > 0) {
         onReturnReserveToHand(ids);
       }
       clearDragSession();
     },
-    [onReturnReserveToHand],
+    [onReturnReserveToHand, reservedCombos],
   );
 
   const handleHandStripDragEnter = useCallback(() => {
@@ -158,7 +161,7 @@ export function GameTable({
   );
 
   const handleCardDragEnd = useCallback(() => {
-    clearDragSession();
+    window.setTimeout(() => clearDragSession(), 0);
   }, []);
 
   const handleReserveDragEnd = useCallback(() => {
@@ -254,7 +257,7 @@ export function GameTable({
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-visible">
       {/* Tier 1 — table felt ~60% */}
-      <section className="flex min-h-0 flex-[6] flex-col overflow-hidden px-2 pt-2">
+      <section className="table-felt-tier relative z-10 flex min-h-0 flex-[6] flex-col overflow-visible px-2 pt-2">
         <TableFelt
           players={players}
           activePlayerIndex={activePlayerIndex}
@@ -287,17 +290,17 @@ export function GameTable({
           <p className="shrink-0 px-2 pb-1.5 text-center font-serif text-base font-bold tracking-wide text-amber-100 sm:text-lg">
             Your Hand
           </p>
-          <div
-            className="hand-tray-cards flex min-h-0 flex-1 flex-col overflow-visible bg-transparent"
-          >
+          <div className="hand-tray-cards flex min-h-0 flex-1 flex-col overflow-visible bg-transparent">
             <PlayerSeat
               player={humanDisplay}
               allowHandReorder
               selectedIds={selectedIds}
+              reservedCombos={reservedCombos}
               onCardClick={onCardClick}
               onCardDragStart={handleCardDragStart}
               onCardDragEnd={handleCardDragEnd}
               onReorder={handleReorder}
+              onReturnReserveToHand={onReturnReserveToHand}
             />
           </div>
         </div>

@@ -15,10 +15,11 @@ export const dragSession: {
   reserveSlotIndex: null,
 };
 
-export function startHandDrag(cardIds: string[]): void {
+/** primaryCardId is the card under the pointer (always reorderable within the hand). */
+export function startHandDrag(cardIds: string[], primaryCardId: string): void {
   dragSession.source = 'hand';
   dragSession.cardIds = cardIds;
-  dragSession.reorderId = cardIds.length === 1 ? cardIds[0]! : null;
+  dragSession.reorderId = primaryCardId;
   dragSession.playComboIds = null;
   dragSession.reserveSlotIndex = null;
 }

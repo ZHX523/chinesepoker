@@ -18,8 +18,7 @@ import {
 import { describeReserveCombo } from '../game/cards';
 import type { Card } from '../game/types';
 import { MAX_CARDS_PER_SLOT } from '../utils/reserve';
-import { HandCardSlot, type ReorderDropHint } from './HandCardSlot';
-import { HandEndDropZone } from './HandEndDropZone';
+import { TrayCardRow } from './TrayCardRow';
 
 interface ReserveSlotProps {
   label: string;
@@ -57,15 +56,17 @@ export function ReserveSlot({
   const playable = (info?.playable ?? false) && slotComplete;
   const hasRoom = cards.length < MAX_CARDS_PER_SLOT;
   const [cardsScale, setCardsScale] = useState(1);
-  const [dropHint, setDropHint] = useState<ReorderDropHint | null>(null);
-  const [endZoneActive, setEndZoneActive] = useState(false);
   const cardsViewportRef = useRef<HTMLDivElement | null>(null);
   const cardsContentRef = useRef<HTMLDivElement | null>(null);
 
-  const clearReorderUi = () => {
-    setDropHint(null);
-    setEndZoneActive(false);
-  };
+  const finishExternalDrop = useCallback(
+    (draggedId: string) => {
+      onAddCards([draggedId]);
+      clearDragSession();
+      return true;
+    },
+    [onAddCards],
+  );
 
   const handleSlotDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -90,7 +91,6 @@ export function ReserveSlot({
           }
         }
         clearDragSession();
-        clearReorderUi();
         return;
       }
 
@@ -99,7 +99,6 @@ export function ReserveSlot({
         onAddCards(ids);
       }
       clearDragSession();
-      clearReorderUi();
     },
     [onAddCards, onReorder, slotIndex],
   );
@@ -115,20 +114,54 @@ export function ReserveSlot({
     setCardDragData(event.dataTransfer, [cardId]);
     setReorderDragData(event.dataTransfer, cardId);
     const comboRow = cardsContentRef.current;
-    const showFullCombo = Boolean(playComboIds && comboRow);
+    const showFullCombo = cards.length > 1 && comboRow;
     setCardDragPreview(
       event.dataTransfer,
       event.currentTarget,
       event.clientX,
       event.clientY,
-      showFullCombo && comboRow ? { container: comboRow } : undefined,
+      showFullCombo ? { container: comboRow } : undefined,
     );
   };
 
   const handleCardDragEnd = () => {
-    clearReorderUi();
-    onDragEnd?.();
+    window.setTimeout(() => onDragEnd?.(), 0);
   };
+
+  const interceptReorderDrop = useCallback(
+    (draggedId: string, _targetId: string, _insertBefore: boolean) => {
+      if (isHandDrag()) {
+        return finishExternalDrop(draggedId);
+      }
+      if (getReserveSlotIndex() !== slotIndex) {
+        if (isReserveDrag()) {
+          return finishExternalDrop(draggedId);
+        }
+        return false;
+      }
+      return false;
+    },
+    [finishExternalDrop, slotIndex],
+  );
+
+  const interceptEndDrop = useCallback(
+    (draggedId: string) => {
+      if (isHandDrag()) {
+        return finishExternalDrop(draggedId);
+      }
+      if (getReserveSlotIndex() !== slotIndex) {
+        if (isReserveDrag()) {
+          return finishExternalDrop(draggedId);
+        }
+        return false;
+      }
+      return false;
+    },
+    [finishExternalDrop, slotIndex],
+  );
+
+  const canShowReorderHint = () =>
+    !isHandDrag() && getReserveSlotIndex() === slotIndex;
 
   useLayoutEffect(() => {
     const viewport = cardsViewportRef.current;
@@ -180,11 +213,11 @@ export function ReserveSlot({
         playable ? 'border-emerald-500/40' : '',
       ].join(' ')}
     >
-      <div className="mb-1 flex shrink-0 items-center justify-between gap-1">
-        <span className="truncate font-serif text-[10px] font-bold uppercase tracking-wider text-emerald-100/90 sm:text-xs">
+      <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
+        <span className="truncate font-serif text-[0.7875rem] font-bold uppercase tracking-wider text-emerald-100 sm:text-[0.9rem]">
           {label}
         </span>
-        <span className="shrink-0 font-mono text-[9px] text-emerald-200/60">
+        <span className="shrink-0 font-serif text-[0.7875rem] font-bold tabular-nums tracking-wider text-emerald-200/75 sm:text-[0.9rem]">
           {cards.length}/{MAX_CARDS_PER_SLOT}
         </span>
       </div>
@@ -196,81 +229,22 @@ export function ReserveSlot({
 
       <div
         ref={cardsViewportRef}
-        className="flex min-h-0 flex-1 items-center justify-center overflow-hidden px-1"
-        onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-            clearReorderUi();
-          }
-        }}
+        className="flex min-h-0 flex-1 items-center justify-center overflow-visible px-1"
       >
-        {cards.length === 0 ? (
-          <p className="text-center text-[10px] text-emerald-200/35">
-            Stage cards here
-          </p>
-        ) : (
-          <div
-            ref={cardsContentRef}
-            className="flex items-center justify-center"
-            style={{
-              transform: `scale(${cardsScale})`,
-              transformOrigin: 'center center',
-            }}
-          >
-            {cards.map((card, i) => (
-              <HandCardSlot
-                key={card.id}
-                card={card}
-                index={i}
-                cardSize="reserve"
-                selected={false}
-                draggable
-                dropHint={dropHint}
-                onDragStart={(e) => beginReserveDrag(card.id, e)}
-                onDragEnd={handleCardDragEnd}
-                onReorderHover={(targetId, insertBefore) => {
-                  if (isHandDrag()) return;
-                  if (getReserveSlotIndex() !== slotIndex) return;
-                  setEndZoneActive(false);
-                  setDropHint({ cardId: targetId, insertBefore });
-                }}
-                onReorderLeave={() => setDropHint(null)}
-                onReorderDrop={(draggedId, targetId, insertBefore) => {
-                  if (isHandDrag()) {
-                    clearReorderUi();
-                    onAddCards([draggedId]);
-                    clearDragSession();
-                    return;
-                  }
-                  if (getReserveSlotIndex() !== slotIndex) {
-                    if (isReserveDrag()) {
-                      clearReorderUi();
-                      onAddCards([draggedId]);
-                      clearDragSession();
-                    }
-                    return;
-                  }
-                  clearReorderUi();
-                  onReorder(draggedId, targetId, insertBefore);
-                }}
-              />
-            ))}
-            {cards.length > 0 && (
-              <HandEndDropZone
-                active={endZoneActive}
-                onHover={() => {
-                  setDropHint(null);
-                  setEndZoneActive(true);
-                }}
-                onLeave={() => setEndZoneActive(false)}
-                onDrop={(draggedId) => {
-                  if (getReserveSlotIndex() !== slotIndex) return;
-                  clearReorderUi();
-                  onReorder(draggedId, null, false);
-                }}
-              />
-            )}
-          </div>
-        )}
+        <TrayCardRow
+          cards={cards}
+          cardSize="reserve"
+          scale={cardsScale}
+          contentRef={cardsContentRef}
+          enableReorder
+          reorderScope="reserve"
+          onCardDragStart={beginReserveDrag}
+          onCardDragEnd={handleCardDragEnd}
+          onReorder={onReorder}
+          onInterceptReorderDrop={interceptReorderDrop}
+          onInterceptEndDrop={interceptEndDrop}
+          canShowReorderHint={canShowReorderHint}
+        />
       </div>
     </div>
   );

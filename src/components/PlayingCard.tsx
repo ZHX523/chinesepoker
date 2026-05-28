@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import {
+  PILE_CARD_SIZE_CLASS,
   TRAY_CARD_CENTER,
   TRAY_CARD_CORNER,
   TRAY_CARD_SIZE_CLASS,
@@ -20,7 +21,7 @@ const SUIT_COLOR: Record<Suit, string> = {
   spades: 'text-slate-900',
 };
 
-export type CardSize = 'sm' | 'md' | 'lg' | 'hand' | 'reserve';
+export type CardSize = 'sm' | 'md' | 'lg' | 'hand' | 'reserve' | 'pile';
 
 const SIZE_CLASSES: Record<CardSize, string> = {
   sm: 'h-14 w-10 text-xs',
@@ -28,6 +29,7 @@ const SIZE_CLASSES: Record<CardSize, string> = {
   lg: 'h-28 w-[4.75rem] text-lg sm:h-32 sm:w-[5.25rem] sm:text-xl',
   hand: TRAY_CARD_SIZE_CLASS,
   reserve: TRAY_CARD_SIZE_CLASS,
+  pile: PILE_CARD_SIZE_CLASS,
 };
 
 interface PlayingCardProps {
@@ -61,9 +63,11 @@ export function PlayingCard({
       ? 'text-base sm:text-lg'
       : resolvedSize === 'hand' || resolvedSize === 'reserve'
         ? TRAY_CARD_CORNER
-        : 'text-sm';
+        : resolvedSize === 'pile'
+          ? 'text-base sm:text-lg'
+          : 'text-sm';
   const centerScale =
-    resolvedSize === 'lg'
+    resolvedSize === 'lg' || resolvedSize === 'pile'
       ? 'text-3xl sm:text-4xl'
       : resolvedSize === 'sm'
         ? 'text-lg'

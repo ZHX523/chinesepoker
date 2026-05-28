@@ -2,6 +2,10 @@ import { TRAY_CARD_HEIGHT } from '../constants/cardTray';
 import { resolveReorderDraggedId } from '../constants/drag';
 import { isReorderDrag } from '../constants/dragSession';
 
+function canAcceptReorderDrop(): boolean {
+  return isReorderDrag();
+}
+
 interface HandEndDropZoneProps {
   active: boolean;
   onHover: () => void;
@@ -24,14 +28,14 @@ export function HandEndDropZone({
           : 'border-transparent',
       ].join(' ')}
       onDragOver={(e) => {
-        if (!isReorderDrag()) return;
+        if (!canAcceptReorderDrop()) return;
         e.preventDefault();
         e.stopPropagation();
         onHover();
       }}
       onDragLeave={onLeave}
       onDrop={(e) => {
-        if (!isReorderDrag()) return;
+        if (!canAcceptReorderDrop()) return;
         e.preventDefault();
         e.stopPropagation();
         const draggedId = resolveReorderDraggedId(e.dataTransfer);

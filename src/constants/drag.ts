@@ -45,10 +45,17 @@ export function setCardDragPreview(
   clone.style.top = '0';
   clone.style.pointerEvents = 'none';
   clone.style.margin = '0';
+  clone.style.zIndex = '99999';
+  if (options?.container) {
+    clone.style.transform = 'none';
+    clone.style.transformOrigin = 'center center';
+  }
   document.body.appendChild(clone);
   dataTransfer.setDragImage(clone, offsetX, offsetY);
   requestAnimationFrame(() => {
-    clone.remove();
+    requestAnimationFrame(() => {
+      clone.remove();
+    });
   });
 }
 

@@ -118,8 +118,19 @@ body {
 /* Let hovered hand cards paint outside tray bounds (flex min-h-0 otherwise clips) */
 .hand-tier,
 .hand-tray-cards,
+.hand-container,
 .hand-cards-viewport,
+.hand-cards-row-host,
 .hand-cards-row {
+  overflow: visible;
+}
+
+/* Center pile cards may extend past the shell */
+.table-felt-tier,
+.felt-inner,
+.field-container,
+.center-pile,
+.center-pile-cards {
   overflow: visible;
 }
 

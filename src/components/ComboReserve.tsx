@@ -16,7 +16,7 @@ interface ComboReserveProps {
   onReserveDragEnd?: () => void;
 }
 
-const SLOT_LABELS = ['Hold Combo A', 'Hold Combo B'] as const;
+const SLOT_LABELS = ['HOLD COMBO A', 'HOLD COMBO B'] as const;
 
 export function ComboReserve({
   slots,
