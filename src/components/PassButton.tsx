@@ -1,9 +1,10 @@
 interface PassButtonProps {
   disabled: boolean;
   onClick: () => void;
+  className?: string;
 }
 
-export function PassButton({ disabled, onClick }: PassButtonProps) {
+export function PassButton({ disabled, onClick, className = '' }: PassButtonProps) {
   return (
     <button
       type="button"
@@ -16,10 +17,11 @@ export function PassButton({ disabled, onClick }: PassButtonProps) {
           : 'Pass your turn'
       }
       className={[
-        'group relative mx-auto flex h-[5.5rem] w-[5.5rem] shrink-0 items-center justify-center rounded-full',
+        'group relative flex aspect-square items-center justify-center rounded-full',
         'transition-transform duration-200',
         'disabled:cursor-not-allowed disabled:opacity-45',
         !disabled && 'hover:scale-[1.04] active:scale-[0.98]',
+        className,
       ].join(' ')}
     >
       <span
@@ -27,16 +29,8 @@ export function PassButton({ disabled, onClick }: PassButtonProps) {
         aria-hidden
       >
         <span className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#1f7a5c] via-[#0f5c44] to-[#083d2e] shadow-[inset_0_2px_8px_rgba(255,255,255,0.2),inset_0_-4px_10px_rgba(0,0,0,0.35)]">
-          <span className="relative flex flex-col items-center leading-none">
-            <span
-              className="pointer-events-none absolute text-3xl font-serif text-[#f5f0e6]/15"
-              aria-hidden
-            >
-              過
-            </span>
-            <span className="text-sm font-bold tracking-widest text-[#f5f0e6] drop-shadow-sm">
-              PASS
-            </span>
+          <span className="font-bold tracking-widest text-[#f5f0e6] drop-shadow-sm [font-size:min(1.35rem,22cqmin)]">
+            PASS
           </span>
         </span>
       </span>

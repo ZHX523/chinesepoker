@@ -85,7 +85,7 @@ export function GameSidebar({
       aria-label="Game chat"
     >
       <header className="shrink-0 border-b border-[#3d2418]/50 px-3 py-2">
-        <h2 className="text-sm font-bold text-emerald-100">Table chat</h2>
+        <h2 className="text-sm font-bold text-emerald-100">Table Chat</h2>
         <p className="text-[10px] text-emerald-400/50">System · players</p>
       </header>
 
@@ -112,22 +112,48 @@ export function GameSidebar({
             ) : (
               <li
                 key={item.id}
-                className={[
-                  'rounded-lg px-2.5 py-1.5 text-[11px] sm:text-xs',
-                  item.senderId === 0
-                    ? 'ml-2 bg-emerald-900/50 text-emerald-50 ring-1 ring-emerald-600/30'
-                    : 'mr-2 bg-slate-900/80 text-slate-200 ring-1 ring-slate-700/40',
-                ].join(' ')}
+                className={
+                  item.senderId === 0 ? 'flex justify-end' : 'flex justify-start'
+                }
               >
-                <div className="mb-0.5 flex items-baseline justify-between gap-1">
-                  <span className="font-semibold text-emerald-200/90">
-                    {item.senderName}
-                  </span>
-                  <span className="shrink-0 font-mono text-[9px] text-emerald-600/60">
-                    {formatTime(item.timestamp)}
-                  </span>
+                <div
+                  className={[
+                    'max-w-[88%] rounded-lg px-2.5 py-1.5 text-[11px] sm:text-xs',
+                    item.senderId === 0
+                      ? 'bg-emerald-900/50 text-emerald-50 ring-1 ring-emerald-600/30'
+                      : 'bg-slate-900/80 text-slate-200 ring-1 ring-slate-700/40',
+                  ].join(' ')}
+                >
+                  <div
+                    className={[
+                      'mb-0.5 flex items-baseline gap-1',
+                      item.senderId === 0
+                        ? 'flex-row-reverse justify-end text-right'
+                        : 'justify-start text-left',
+                    ].join(' ')}
+                  >
+                    <span
+                      className={
+                        item.senderId === 0
+                          ? 'font-semibold text-emerald-100/90'
+                          : 'font-semibold text-emerald-200/90'
+                      }
+                    >
+                      {item.senderName}
+                    </span>
+                    <span className="shrink-0 font-mono text-[9px] text-emerald-600/60">
+                      {formatTime(item.timestamp)}
+                    </span>
+                  </div>
+                  <p
+                    className={[
+                      'leading-snug break-words',
+                      item.senderId === 0 ? 'text-right' : 'text-left',
+                    ].join(' ')}
+                  >
+                    {item.text}
+                  </p>
                 </div>
-                <p className="leading-snug break-words">{item.text}</p>
               </li>
             ),
           )

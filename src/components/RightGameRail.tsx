@@ -35,11 +35,12 @@ export function RightGameRail({
         />
       </div>
 
-      <div className="mt-auto flex shrink-0 flex-[2] flex-col items-center justify-center border-t border-[#3d2418]/80 px-4 py-4">
-        <p className="mb-2 text-center text-[10px] uppercase tracking-widest text-emerald-300/50">
-          Action
-        </p>
-        <PassButton disabled={passDisabled} onClick={onPass} />
+      <div className="mt-auto flex min-h-0 w-full shrink-0 flex-[2] items-center justify-center border-t border-[#3d2418]/80 px-4 py-3">
+        <PassButton
+          disabled={passDisabled}
+          onClick={onPass}
+          className="@container h-1/2 w-1/2 max-h-full max-w-full min-h-16 min-w-16"
+        />
       </div>
     </aside>
   );

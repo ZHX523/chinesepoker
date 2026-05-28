@@ -115,6 +115,14 @@ body {
   background: rgba(6, 47, 34, 0.55);
 }
 
+/* Let hovered hand cards paint outside tray bounds (flex min-h-0 otherwise clips) */
+.hand-tier,
+.hand-tray-cards,
+.hand-cards-viewport,
+.hand-cards-row {
+  overflow: visible;
+}
+
 .card-traditional {
   background: linear-gradient(160deg, #fffef9 0%, #f5f0e6 55%, #e8dfd0 100%);
   box-shadow:

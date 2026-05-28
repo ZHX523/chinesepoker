@@ -108,6 +108,23 @@ export default function App() {
     setSelectedIds(new Set());
   }, []);
 
+  const reorderReserveSlot = useCallback(
+    (
+      slotIndex: number,
+      draggedId: string,
+      targetId: string | null,
+      insertBefore: boolean,
+    ) => {
+      setReservedCombos((slots) =>
+        slots.map((slot, i) => {
+          if (i !== slotIndex || !slot) return slot;
+          return moveCardInOrder(slot, draggedId, targetId, insertBefore);
+        }),
+      );
+    },
+    [],
+  );
+
   const returnCardsToHand = useCallback((cardIds: string[]) => {
     if (cardIds.length === 0) return;
     setReservedCombos((slots) => removeCardsFromReserve(slots, cardIds));
@@ -180,7 +197,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#0a1210]">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-visible">
         <GameTable
           state={state}
           handOrder={handOrder}
@@ -190,6 +207,7 @@ export default function App() {
           onReorderHand={reorderHand}
           reservedCombos={reservedCombos}
           onAddToReserveSlot={addToSlot}
+          onReorderReserveSlot={reorderReserveSlot}
           onReturnReserveToHand={returnCardsToHand}
           errorMessage={state.errorMessage}
         />

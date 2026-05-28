@@ -22,17 +22,24 @@ export function setCardDragData(dataTransfer: DataTransfer, cardIds: string[]): 
   dataTransfer.effectAllowed = 'move';
 }
 
+export type CardDragPreviewOptions = {
+  /** Clone this node (e.g. full combo row) instead of the grabbed card only */
+  container?: HTMLElement;
+};
+
 /** Use a clone of the element as the drag preview so the source card stays crisp. */
 export function setCardDragPreview(
   dataTransfer: DataTransfer,
   element: HTMLElement,
   clientX: number,
   clientY: number,
+  options?: CardDragPreviewOptions,
 ): void {
-  const rect = element.getBoundingClientRect();
+  const previewRoot = options?.container ?? element;
+  const rect = previewRoot.getBoundingClientRect();
   const offsetX = clientX - rect.left;
   const offsetY = clientY - rect.top;
-  const clone = element.cloneNode(true) as HTMLElement;
+  const clone = previewRoot.cloneNode(true) as HTMLElement;
   clone.style.position = 'fixed';
   clone.style.left = '-9999px';
   clone.style.top = '0';

@@ -7,6 +7,7 @@ import {
 } from '../constants/drag';
 import {
   clearDragSession,
+  getReservePlayIds,
   isHandDrag,
   isReserveDrag,
   startHandDrag,
@@ -32,6 +33,12 @@ interface GameTableProps {
   ) => void;
   reservedCombos: (string[] | null)[];
   onAddToReserveSlot: (slotIndex: number, cardIds: string[]) => void;
+  onReorderReserveSlot: (
+    slotIndex: number,
+    draggedId: string,
+    targetId: string | null,
+    insertBefore: boolean,
+  ) => void;
   onReturnReserveToHand: (cardIds: string[]) => void;
   errorMessage: string | null;
 }
@@ -45,6 +52,7 @@ export function GameTable({
   onReorderHand,
   reservedCombos,
   onAddToReserveSlot,
+  onReorderReserveSlot,
   onReturnReserveToHand,
   errorMessage,
 }: GameTableProps) {
@@ -194,7 +202,11 @@ export function GameTable({
       dragOverDepth.current = 0;
       setIsDragOver(false);
 
-      const ids = getCardDragData(event.dataTransfer);
+      let ids = getCardDragData(event.dataTransfer);
+      if (isReserveDrag()) {
+        const combo = getReservePlayIds();
+        if (combo?.length) ids = combo;
+      }
       if (ids && ids.length > 0) {
         onPlayCards(new Set(ids));
       }
@@ -240,7 +252,7 @@ export function GameTable({
   ) : null;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-visible">
       {/* Tier 1 — table felt ~60% */}
       <section className="flex min-h-0 flex-[6] flex-col overflow-hidden px-2 pt-2">
         <TableFelt
@@ -261,10 +273,10 @@ export function GameTable({
       </section>
 
       {/* Tier 2 — hand tray ~20% */}
-      <section className="flex min-h-0 flex-[2] flex-col px-2 py-1">
+      <section className="hand-tier relative z-20 flex min-h-0 flex-[2] flex-col overflow-visible px-2 py-1">
         <div
           className={[
-            'tray-mahogany flex h-full min-h-0 flex-col overflow-hidden p-1.5',
+            'tray-mahogany flex h-full min-h-0 flex-col overflow-visible p-1.5',
             isHandDropTarget ? 'ring-2 ring-amber-400/50' : '',
           ].join(' ')}
           onDragEnter={handleHandStripDragEnter}
@@ -275,7 +287,9 @@ export function GameTable({
           <p className="shrink-0 px-2 pb-1.5 text-center font-serif text-base font-bold tracking-wide text-amber-100 sm:text-lg">
             Your Hand
           </p>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+          <div
+            className="hand-tray-cards flex min-h-0 flex-1 flex-col overflow-visible bg-transparent"
+          >
             <PlayerSeat
               player={humanDisplay}
               allowHandReorder
@@ -295,6 +309,7 @@ export function GameTable({
           slots={reservedCombos}
           hand={human.hand}
           onAddToSlot={onAddToReserveSlot}
+          onReorderSlot={onReorderReserveSlot}
           onReserveDragEnd={handleReserveDragEnd}
         />
       </section>
