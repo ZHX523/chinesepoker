@@ -41,7 +41,7 @@ const en = {
     subtitleInvite:
       'Table {roomId} · choose your display name. If the game has started or all seats are taken, you\'ll watch as a spectator.',
     subtitleDefault: 'Choose a display name, then pick how you want to play.',
-    yourName: 'Your name',
+    yourName: 'Name',
     joinTable: 'Join table',
     modePrompt: 'Play with Computer or with Friends?',
     computer: 'Computer',
@@ -266,7 +266,7 @@ const zh = {
     subtitleInvite:
       '牌桌 {roomId} · 请输入昵称。若牌局已开始或座位已满，你将以观众身份观看。',
     subtitleDefault: '请输入昵称，然后选择游戏方式。',
-    yourName: '你的昵称',
+    yourName: '名称',
     joinTable: '加入牌桌',
     modePrompt: '与电脑对战还是与好友对战？',
     computer: '电脑',

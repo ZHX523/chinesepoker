@@ -22,21 +22,34 @@ interface RightGameRailProps {
   onTurnAlertMutedChange: (muted: boolean) => void;
 }
 
-function GameTitle({ language }: { language: 'en' | 'zh' }) {
+function GameTitle({
+  language,
+  variant = 'default',
+}: {
+  language: 'en' | 'zh';
+  variant?: 'default' | 'rail';
+}) {
   const titleLines =
     language === 'zh' ? [GAME_TITLES.zh] : GAME_TITLES.en.split(' ');
+
+  const sizeClass =
+    variant === 'rail'
+      ? language === 'zh'
+        ? 'text-xs @[11rem]/rail-header:text-sm @[14rem]/rail-header:text-base @[18rem]/rail-header:text-xl @[22rem]/rail-header:text-3xl'
+        : 'text-[0.55rem] leading-[1.08] @[11rem]/rail-header:text-[0.625rem] @[14rem]/rail-header:text-xs @[18rem]/rail-header:text-lg @[22rem]/rail-header:text-2xl'
+      : language === 'zh'
+        ? 'text-base sm:text-lg md:text-xl'
+        : 'text-xs sm:text-sm md:text-lg';
 
   return (
     <h1
       className={[
-        'flex flex-col items-center justify-center text-center font-serif font-bold leading-[1.05] tracking-wide text-amber-100',
-        language === 'zh'
-          ? 'max-w-[7.5rem] text-xl lg:text-3xl'
-          : 'max-w-[7rem] text-lg lg:text-2xl',
+        'flex min-w-0 max-w-full flex-col items-center justify-center text-center font-serif font-bold tracking-wide text-amber-100',
+        sizeClass,
       ].join(' ')}
     >
       {titleLines.map((line) => (
-        <span key={line} className="block whitespace-nowrap">
+        <span key={line} className="block max-w-full truncate whitespace-nowrap">
           {line}
         </span>
       ))}
@@ -122,14 +135,18 @@ export function RightGameRail({
   return (
     <>
       <header className="relative z-40 flex h-14 shrink-0 items-center border-b border-[#3d2418]/80 bg-[#0d1412]/95 px-2 md:hidden">
-        <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2">
-          <LanguageToggle
-            language={language}
-            onLanguageChange={setLanguage}
-            size="lg"
-          />
-          <GameTitle language={language} />
-          <div className="flex items-center gap-1.5">
+        <div className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2">
+          <div className="shrink-0">
+            <LanguageToggle
+              language={language}
+              onLanguageChange={setLanguage}
+              size="lg"
+            />
+          </div>
+          <div className="min-w-0 overflow-hidden px-0.5">
+            <GameTitle language={language} />
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
               onClick={() => setMobileChatOpen(true)}
@@ -156,27 +173,30 @@ export function RightGameRail({
 
       {/* Desktop sidebar */}
       <aside className="relative z-30 hidden h-full min-h-0 min-w-0 flex-[1] flex-col overflow-hidden border-l border-[#3d2418] bg-[#0d1412]/95 md:flex">
-        <header className="relative z-40 flex min-h-[3.25rem] flex-[8] shrink-0 items-center justify-center overflow-hidden border-b border-[#3d2418]/80 px-2 sm:px-3">
-          <div className="absolute left-2 top-1/2 z-10 -translate-y-1/2 sm:left-3">
-            <LanguageToggle
-              language={language}
-              onLanguageChange={setLanguage}
-              size="lg"
-            />
-          </div>
-          <div className="px-12 sm:px-14">
-            <GameTitle language={language} />
-          </div>
-          <div className="absolute right-2 top-1/2 z-10 -translate-y-1/2 sm:right-3">
-            <BigTwoMenu
-              onRestartGame={onRestartGame}
-              onLobby={onLobby}
-              turnTimerSeconds={turnTimerSeconds}
-              onTurnTimerChange={onTurnTimerChange}
-              turnAlertMuted={turnAlertMuted}
-              onTurnAlertMutedChange={onTurnAlertMutedChange}
-              menuButtonSize="lg"
-            />
+        <header className="@container/rail-header relative z-40 flex min-h-[3.25rem] flex-[8] shrink-0 items-center border-b border-[#3d2418]/80 px-1.5 sm:px-2">
+          <div className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1">
+            <div className="shrink-0">
+              <LanguageToggle
+                language={language}
+                onLanguageChange={setLanguage}
+                size="lg"
+                compact
+              />
+            </div>
+            <div className="min-w-0 overflow-hidden px-0.5">
+              <GameTitle language={language} variant="rail" />
+            </div>
+            <div className="shrink-0">
+              <BigTwoMenu
+                onRestartGame={onRestartGame}
+                onLobby={onLobby}
+                turnTimerSeconds={turnTimerSeconds}
+                onTurnTimerChange={onTurnTimerChange}
+                turnAlertMuted={turnAlertMuted}
+                onTurnAlertMutedChange={onTurnAlertMutedChange}
+                menuButtonSize="md"
+              />
+            </div>
           </div>
         </header>
 
