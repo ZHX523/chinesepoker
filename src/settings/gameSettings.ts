@@ -15,7 +15,7 @@ export const GAME_TITLE_LINES: Record<DisplayLanguage, string[]> = {
   zh: ['鋤大D'],
 };
 
-export const DEFAULT_DISPLAY_LANGUAGE: DisplayLanguage = 'zh';
+export const DEFAULT_DISPLAY_LANGUAGE: DisplayLanguage = 'en';
 
 export const DEFAULT_TURN_TIMER_SECONDS = 15;
 export const MIN_TURN_TIMER_SECONDS = 5;

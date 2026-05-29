@@ -450,6 +450,16 @@ export function isRoomHost(room: FriendRoom): boolean {
   return room.hostSessionId === getSessionId();
 }
 
+export function getSeatForSession(
+  room: FriendRoom,
+  sessionId: string,
+): number | undefined {
+  const mapped = room.seatsBySession[sessionId];
+  if (mapped !== undefined) return mapped;
+  const index = room.seats.findIndex((seat) => seat?.sessionId === sessionId);
+  return index >= 0 ? index : undefined;
+}
+
 export function startFriendRoomGame(roomId: string): FriendRoom | null {
   const room = readRoom(roomId);
   if (!room || filledSeatCount(room) < MAX_TABLE_PLAYERS) return null;

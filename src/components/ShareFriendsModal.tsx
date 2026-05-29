@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
-import { LanguageToggle } from './LanguageToggle';
 import type { RoomPlayer } from '../multiplayer/room';
 import { MAX_TABLE_PLAYERS } from '../multiplayer/constants';
 
@@ -23,7 +22,7 @@ export function ShareFriendsModal({
   onRemoveComputer,
   onStartGame,
 }: ShareFriendsModalProps) {
-  const { t, displayPlayerName, language, setLanguage } = useTranslation();
+  const { t, displayPlayerName } = useTranslation();
   const [copied, setCopied] = useState(false);
   const filledCount = seats.filter((seat) => seat != null).length;
   const tableFull = filledCount >= MAX_TABLE_PLAYERS;
@@ -49,14 +48,11 @@ export function ShareFriendsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
       <div
-        className="relative w-full max-w-md rounded-2xl border border-[#3d2418] bg-gradient-to-b from-[#1a0f0c] to-[#0d1412] p-6 shadow-2xl"
+        className="w-full max-w-md rounded-2xl border border-[#3d2418] bg-gradient-to-b from-[#1a0f0c] to-[#0d1412] p-6 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="share-title"
       >
-        <div className="absolute right-4 top-4">
-          <LanguageToggle language={language} onLanguageChange={setLanguage} />
-        </div>
         <h2
           id="share-title"
           className="font-serif text-2xl font-bold tracking-wide text-amber-100"

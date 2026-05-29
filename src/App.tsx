@@ -49,6 +49,7 @@ import {
   createFriendRoom,
   ensureRoomLoaded,
   getRoomIdFromUrl,
+  getSeatForSession,
   isRoomHost,
   joinFriendRoom,
   readRoom,
@@ -140,7 +141,11 @@ export default function App() {
   const atTable =
     state != null || spectatingGame || (spectatingLobby && playerName != null);
   const showShareLobby =
-    !atTable && joinPhase === 'share' && friendRoom != null && !isSpectator;
+    !atTable &&
+    joinPhase === 'share' &&
+    friendRoom != null &&
+    friendRoom.status === 'waiting' &&
+    !isSpectator;
   const showJoinOverlay =
     playerName == null || showShareLobby || (joinPhase === 'form' && !atTable);
 
@@ -343,9 +348,10 @@ export default function App() {
     const room = startFriendRoomGame(friendRoom.roomId);
     if (!room?.gameState) return;
 
-    const seat = room.seatsBySession[getSessionId()] ?? 0;
+    const seat = getSeatForSession(room, getSessionId()) ?? 0;
     setMySeat(seat);
     setIsSpectator(false);
+    setJoinPhase('form');
     setFriendRoom(room);
     resetTableUi();
     primeTurnSound();
@@ -387,7 +393,7 @@ export default function App() {
       setFriendRoom(room);
 
       const sessionId = getSessionId();
-      const seat = room.seatsBySession[sessionId];
+      const seat = getSeatForSession(room, sessionId);
       const watching = (room.spectators ?? []).some(
         (spec) => spec.sessionId === sessionId,
       );
@@ -396,6 +402,7 @@ export default function App() {
         if (watching && seat === undefined) {
           setIsSpectator(true);
           setPlayMode('friends');
+          setJoinPhase('form');
           setState(toSpectatorViewState(room.gameState));
           return;
         }
@@ -408,7 +415,8 @@ export default function App() {
         setIsSpectator(false);
         setMySeat(seat);
         setPlayMode('friends');
-        const me = room.seats.find((s) => s?.sessionId === sessionId);
+        setJoinPhase('form');
+        const me = room.seats[seat];
         if (me) {
           setPlayerName(me.name);
           savePlayerProfile({
@@ -416,13 +424,17 @@ export default function App() {
             roomId: room.roomId,
             playMode: 'friends',
             isSpectator: false,
+            avatarIndex: me.avatarIndex,
           });
         }
 
+        resetTableUi();
+        primeTurnSound();
+        wasHumanTurnRef.current = false;
         setState(applyViewState(room.gameState, 'friends', seat));
       }
     });
-  }, [friendRoom?.roomId]);
+  }, [friendRoom?.roomId, resetTableUi]);
 
   const applyRestoredSession = useCallback(
     (session: ReturnType<typeof restoreAppSession>) => {
