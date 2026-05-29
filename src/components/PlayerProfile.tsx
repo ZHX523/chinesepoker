@@ -1,4 +1,9 @@
+import { useState } from 'react';
 import type { Player } from '../game/types';
+import { profileIconForPlayer } from '../game/gameLogic';
+import { useTranslation } from '../i18n/LanguageContext';
+import { ProfileIconPicker } from './ProfileIconPicker';
+import { TurnTimer } from './TurnTimer';
 
 export type TableSeatPosition = 'top' | 'left' | 'right' | 'bottom';
 export type ProfileLayout = 'horizontal' | 'vertical';
@@ -9,44 +14,23 @@ interface PlayerProfileProps {
   handCount: number;
   reserveCount: number;
   isActive: boolean;
-  isLocal: boolean;
   position: TableSeatPosition;
   profileScale?: number;
   layout?: ProfileLayout;
-}
-
-/** Stable “random” icon per player id */
-const PROFILE_ICONS = [
-  '🐼',
-  '🐯',
-  '🐉',
-  '🦅',
-  '🦊',
-  '🐸',
-  '🦉',
-  '🐙',
-  '🦁',
-  '🐨',
-  '🦄',
-  '🐲',
-  '🦋',
-  '🐺',
-  '🦈',
-  '🐢',
-] as const;
-
-function profileIcon(playerId: number): string {
-  return PROFILE_ICONS[playerId % PROFILE_ICONS.length] ?? '🀄';
+  turnSecondsRemaining?: number | null;
+  turnTimeLimitSec?: number;
+  isDisconnected?: boolean;
+  canEditAvatar?: boolean;
+  onAvatarChange?: (index: number) => void;
 }
 
 const POSITION_CLASS: Record<TableSeatPosition, string> = {
-  top: 'left-1/2 top-[3%] -translate-x-1/2',
-  left: 'left-[2%] top-1/2 -translate-y-1/2',
-  right: 'right-[2%] top-1/2 -translate-y-1/2',
-  bottom: 'bottom-[5%] left-1/2 -translate-x-1/2',
+  top: 'left-1/2 top-[1%] -translate-x-1/2 lg:top-[3%]',
+  left: 'left-[1%] top-1/2 -translate-y-1/2 lg:left-[2%]',
+  right: 'right-[1%] top-1/2 -translate-y-1/2 lg:right-[2%]',
+  bottom: 'bottom-[2%] left-1/2 -translate-x-1/2 lg:bottom-[5%]',
 };
 
-/** Scale toward table center so profiles tuck inward when shrunk */
 const SCALE_ORIGIN: Record<TableSeatPosition, string> = {
   top: 'center bottom',
   left: 'right center',
@@ -64,102 +48,189 @@ const AVATAR_CLASS = [
   'ring-2 ring-[#c9a227]/55 shadow-md',
 ].join(' ');
 
+const ACTIVE_TURN_GLOW =
+  'shadow-[0_0_19px_rgba(255,255,255,0.32),0_0_37px_rgba(255,255,255,0.14)]';
+
 export function PlayerProfile({
   player,
   displayNumber: _displayNumber,
   handCount,
   reserveCount,
   isActive,
-  isLocal,
   position,
   profileScale = 1,
   layout = 'horizontal',
+  turnSecondsRemaining = null,
+  turnTimeLimitSec = 15,
+  isDisconnected = false,
+  canEditAvatar = false,
+  onAvatarChange,
 }: PlayerProfileProps) {
-  const icon = profileIcon(player.id);
+  const { t, displayPlayerName } = useTranslation();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const showTimer =
+    isActive &&
+    turnSecondsRemaining != null &&
+    turnSecondsRemaining >= 0;
+  const icon = profileIconForPlayer(player);
   const totalCards = handCount + reserveCount;
   const useVertical =
     layout === 'vertical' && (position === 'left' || position === 'right');
+  const editable = canEditAvatar && player.isHuman && onAvatarChange != null;
 
-  const cardStateClass = [
-    isLocal
-      ? 'border-amber-400/90 shadow-[0_0_20px_rgba(212,175,55,0.35)]'
-      : 'border-[#5c3d2e]/85',
-    isActive && !isLocal ? 'ring-2 ring-amber-300/50' : '',
-  ].join(' ');
+  const cardStateClass = isActive
+    ? 'border-amber-400/90 shadow-[0_0_17px_rgba(255,255,255,0.30)]'
+    : 'border-[#5c3d2e]/85';
 
-  const avatar = (
-    <div
-      className={[
-        AVATAR_CLASS,
-        'relative h-[4.5rem] w-[4.5rem] sm:h-[5rem] sm:w-[5rem]',
-        isLocal ? 'ring-amber-400/80' : '',
-      ].join(' ')}
-      aria-hidden
-    >
-      <span className="text-[1.75rem] leading-none sm:text-[2rem]">{icon}</span>
-      {isLocal && (
+  const avatarInner = (
+    <>
+      <span className="text-[2.15rem] leading-none lg:text-[2.5rem] xl:text-[3rem]">{icon}</span>
+      {isActive && (
         <span
           className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-[#1a0f0c] ring-1 ring-[#1a0f0c]/40"
-          title="You"
+          title={t('profile.currentTurn')}
         >
           ✓
         </span>
       )}
+    </>
+  );
+
+  const avatar = editable ? (
+    <button
+      type="button"
+      onClick={() => setPickerOpen(true)}
+      title={t('profile.changeIcon')}
+      aria-label={t('profile.changeIcon')}
+      className={[
+        AVATAR_CLASS,
+        'relative h-[3.75rem] w-[3.75rem] cursor-pointer transition-transform hover:scale-105 lg:h-[4.5rem] lg:w-[4.5rem] xl:h-[5rem] xl:w-[5rem]',
+        isActive ? 'ring-amber-400/80 shadow-[0_0_14px_rgba(255,255,255,0.37)]' : '',
+        isDisconnected ? 'opacity-45 grayscale' : '',
+      ].join(' ')}
+    >
+      {avatarInner}
+    </button>
+  ) : (
+    <div
+      className={[
+        AVATAR_CLASS,
+        'relative h-[3.75rem] w-[3.75rem] lg:h-[4.5rem] lg:w-[4.5rem] xl:h-[5rem] xl:w-[5rem]',
+        isActive ? 'ring-amber-400/80 shadow-[0_0_14px_rgba(255,255,255,0.37)]' : '',
+        isDisconnected ? 'opacity-45 grayscale' : '',
+      ].join(' ')}
+      aria-hidden
+    >
+      {avatarInner}
     </div>
   );
 
   const cardBody = (
     <>
-      <p className="truncate font-serif text-base font-bold leading-tight text-amber-100/95 sm:text-lg">
-        {player.name}
+      <p className="truncate font-serif text-base font-bold leading-none text-amber-100/95 sm:text-lg">
+        {displayPlayerName(player.name)}
       </p>
-      <p className="mt-[0.475rem] font-serif text-base font-semibold leading-tight tabular-nums text-emerald-100/90 sm:text-lg">
-        {totalCards} cards
-      </p>
+      <div
+        className="mx-auto my-1 h-px w-[88%] bg-gradient-to-r from-transparent via-amber-400/45 to-transparent sm:my-1.5"
+        aria-hidden
+      />
+      {isDisconnected ? (
+        <p className="font-serif text-sm font-semibold leading-tight text-rose-300/95">
+          {t('profile.disconnected')}
+        </p>
+      ) : (
+        <p className="flex items-baseline justify-center gap-1.5 leading-none">
+          <span className="font-serif text-[1.5rem] font-bold tabular-nums text-emerald-100 sm:text-[1.65rem] lg:text-[1.85rem]">
+            {totalCards}
+          </span>
+          <span className="font-serif text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-emerald-100/75 sm:text-xs">
+            {t('profile.cardsLabel')}
+          </span>
+        </p>
+      )}
     </>
   );
 
+  const timer =
+    showTimer ? (
+      <TurnTimer
+        secondsRemaining={turnSecondsRemaining}
+        totalSeconds={turnTimeLimitSec}
+      />
+    ) : null;
+
   return (
-    <div className={['absolute z-20', POSITION_CLASS[position]].join(' ')}>
+    <>
       <div
-        className={useVertical ? 'transition-transform duration-200' : 'pl-[2.3rem] transition-transform duration-200 sm:pl-[2.55rem]'}
-        style={{
-          transform: `scale(${profileScale})`,
-          transformOrigin: SCALE_ORIGIN[position],
-        }}
+        className={[
+          'absolute z-20',
+          editable ? 'pointer-events-auto' : 'pointer-events-none',
+          POSITION_CLASS[position],
+        ].join(' ')}
       >
-        {useVertical ? (
-          <div className="relative flex flex-col items-center pt-[2.35rem] sm:pt-[2.6rem]">
-            <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2">
-              {avatar}
-            </div>
-            <div
-              className={[
-                CARD_CLASS,
-                cardStateClass,
-                'min-w-[7.75rem] px-3 pb-[0.7125rem] pt-[2.65rem] sm:min-w-[8.5rem] sm:px-3.5 sm:pb-[0.83125rem] sm:pt-[2.9rem]',
-              ].join(' ')}
-            >
-              {cardBody}
-            </div>
+        <div
+          className={[
+            useVertical
+              ? 'transition-transform duration-200'
+              : 'pl-[2.3rem] transition-transform duration-200 sm:pl-[2.55rem]',
+          ].join(' ')}
+          style={{
+            transform: `scale(${profileScale})`,
+            transformOrigin: SCALE_ORIGIN[position],
+          }}
+        >
+          <div className="flex items-center gap-2">
+            {useVertical ? (
+              <div
+                className={[
+                  'relative flex flex-col items-center pt-[2.2rem] sm:pt-[2.4rem]',
+                  isActive ? ACTIVE_TURN_GLOW : '',
+                ].join(' ')}
+              >
+                <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2">
+                  {avatar}
+                </div>
+                <div
+                  className={[
+                    CARD_CLASS,
+                    cardStateClass,
+                    'min-w-[7.75rem] px-3 pb-2 pt-[2.45rem] sm:min-w-[8.5rem] sm:px-3.5 sm:pb-2.5 sm:pt-[2.65rem]',
+                  ].join(' ')}
+                >
+                  {cardBody}
+                </div>
+              </div>
+            ) : (
+              <div className={['relative', isActive ? ACTIVE_TURN_GLOW : ''].join(' ')}>
+                <div className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+                  {avatar}
+                </div>
+                <div
+                  className={[
+                    CARD_CLASS,
+                    cardStateClass,
+                    'min-w-[10.5rem] py-1 pl-[2.55rem] pr-3 lg:min-w-[12rem] lg:py-1.5 lg:pl-[3rem] lg:pr-4 xl:min-w-[13.5rem] xl:py-1.5 xl:pl-[3.35rem] xl:pr-5',
+                  ].join(' ')}
+                >
+                  {cardBody}
+                </div>
+              </div>
+            )}
+            {timer}
           </div>
-        ) : (
-          <div className="relative">
-            <div className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-              {avatar}
-            </div>
-            <div
-              className={[
-                CARD_CLASS,
-                cardStateClass,
-                'min-w-[12rem] py-[0.7125rem] pl-[3rem] pr-4 sm:min-w-[13.5rem] sm:py-[0.83125rem] sm:pl-[3.35rem] sm:pr-5',
-              ].join(' ')}
-            >
-              {cardBody}
-            </div>
-          </div>
-        )}
+        </div>
       </div>
-    </div>
+
+      {pickerOpen && onAvatarChange && (
+        <ProfileIconPicker
+          selectedIndex={player.avatarIndex}
+          onSelect={(index) => {
+            onAvatarChange(index);
+            setPickerOpen(false);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+    </>
   );
 }

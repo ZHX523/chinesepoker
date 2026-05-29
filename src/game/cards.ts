@@ -1,3 +1,5 @@
+import type { DisplayLanguage } from '../settings/gameSettings';
+import { comboLabel as comboLabelForLang, translate } from '../i18n/messages';
 import type { Card, Combination, CombinationType, Rank, Suit } from './types';
 
 export const RANKS: Rank[] = [
@@ -288,18 +290,11 @@ export function validateAndComparePlay(
   return compareCombinations(incoming, currentPile.combination);
 }
 
-export function combinationLabel(type: CombinationType): string {
-  const labels: Record<CombinationType, string> = {
-    single: 'Single',
-    pair: 'Pair',
-    triple: 'Triple',
-    straight: 'Straight',
-    flush: 'Flush',
-    fullhouse: 'Full House',
-    fourofakind: 'Four of a Kind',
-    straightflush: 'Straight Flush',
-  };
-  return labels[type];
+export function combinationLabel(
+  type: CombinationType,
+  language: DisplayLanguage = 'en',
+): string {
+  return comboLabelForLang(language, type);
 }
 
 export const MAX_RESERVE_CARDS = 5;
@@ -309,7 +304,10 @@ export function isBombCombination(type: CombinationType): boolean {
 }
 
 /** Label for combo reserve slots (any card count 1–5). */
-export function describeReserveCombo(cards: Card[]): {
+export function describeReserveCombo(
+  cards: Card[],
+  language: DisplayLanguage = 'en',
+): {
   label: string;
   playable: boolean;
   hint?: string;
@@ -319,8 +317,10 @@ export function describeReserveCombo(cards: Card[]): {
 
   const combo = classifyCombination(cards);
   if (combo) {
-    const base = combinationLabel(combo.type);
-    const label = isBombCombination(combo.type) ? `Bomb · ${base}` : base;
+    const base = combinationLabel(combo.type, language);
+    const label = isBombCombination(combo.type)
+      ? translate(language, 'reserve.bomb', { base })
+      : base;
     return { label, playable: true };
   }
 
@@ -329,35 +329,46 @@ export function describeReserveCombo(cards: Card[]): {
     const values = [...counts.values()];
     if (values.includes(4)) {
       return {
-        label: 'Bomb setup · 4 of a Kind',
+        label: translate(language, 'reserve.bombSetup'),
         playable: false,
-        hint: 'Stash all 5 for a bomb',
+        hint: translate(language, 'reserve.hintStashBomb'),
       };
     }
     if (values.includes(3)) {
       return {
-        label: '4 cards',
+        label: translate(language, 'reserve.fourCards'),
         playable: false,
-        hint: 'Add kicker for full house',
+        hint: translate(language, 'reserve.hintFullHouse'),
       };
     }
     return {
-      label: '4 cards',
+      label: translate(language, 'reserve.fourCards'),
       playable: false,
-      hint: 'Not playable as-is',
+      hint: translate(language, 'reserve.hintNotPlayable'),
     };
   }
 
   if (count === 2) {
-    return { label: '2 cards', playable: false, hint: 'Needs a pair' };
+    return {
+      label: translate(language, 'reserve.twoCards'),
+      playable: false,
+      hint: translate(language, 'reserve.hintNeedsPair'),
+    };
   }
   if (count === 3) {
-    return { label: '3 cards', playable: false, hint: 'Needs a triple' };
+    return {
+      label: translate(language, 'reserve.threeCards'),
+      playable: false,
+      hint: translate(language, 'reserve.hintNeedsTriple'),
+    };
   }
 
   return {
-    label: `${count} card${count === 1 ? '' : 's'}`,
+    label:
+      count === 1
+        ? translate(language, 'reserve.cardCount', { count })
+        : translate(language, 'reserve.cardsCount', { count }),
     playable: false,
-    hint: 'Not a legal play',
+    hint: translate(language, 'reserve.hintNotLegal'),
   };
 }

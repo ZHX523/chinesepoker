@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import type { Card } from '../game/types';
+import { useTranslation } from '../i18n/LanguageContext';
 import { RESERVE_SLOT_COUNT, resolveSlotCards } from '../utils/reserve';
 import { ReserveSlot } from './ReserveSlot';
 
@@ -16,7 +17,7 @@ interface ComboReserveProps {
   onReserveDragEnd?: () => void;
 }
 
-const SLOT_LABELS = ['HOLD COMBO A', 'HOLD COMBO B'] as const;
+const SLOT_LABEL_KEYS = ['reserve.comboA', 'reserve.comboB'] as const;
 
 export function ComboReserve({
   slots,
@@ -25,6 +26,7 @@ export function ComboReserve({
   onReorderSlot,
   onReserveDragEnd,
 }: ComboReserveProps) {
+  const { t } = useTranslation();
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const dragOverDepth = useRef(0);
 
@@ -71,7 +73,11 @@ export function ComboReserve({
           return (
             <ReserveSlot
               key={index}
-              label={SLOT_LABELS[index] ?? `Hold Combo ${index + 1}`}
+              label={
+                SLOT_LABEL_KEYS[index]
+                  ? t(SLOT_LABEL_KEYS[index])
+                  : t('reserve.comboFallback', { n: index + 1 })
+              }
               slotIndex={index}
               cardIds={cardIds}
               cards={cards}

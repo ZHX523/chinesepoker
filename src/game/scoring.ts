@@ -2,9 +2,7 @@ import type { Player, ScoreEntry } from './types';
 
 export function penaltyForCardCount(count: number): number {
   if (count <= 0) return 0;
-  if (count <= 9) return count;
-  if (count <= 12) return count * 2;
-  return count * 3;
+  return count;
 }
 
 export function calculateScores(

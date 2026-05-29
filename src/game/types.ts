@@ -1,3 +1,5 @@
+import type { I18nText } from '../i18n/types';
+
 export type Suit = 'diamonds' | 'clubs' | 'hearts' | 'spades';
 
 export type Rank =
@@ -52,6 +54,8 @@ export interface Player {
   name: string;
   isHuman: boolean;
   hand: Card[];
+  /** Index into Chinese zodiac avatars (0–11: Rat … Pig). */
+  avatarIndex: number;
 }
 
 export interface ScoreEntry {
@@ -61,9 +65,11 @@ export interface ScoreEntry {
   penalty: number;
 }
 
+export type { I18nText } from '../i18n/types';
+
 export interface ActionLogEntry {
   id: string;
-  text: string;
+  i18n: I18nText;
   timestamp: number;
 }
 
@@ -92,6 +98,8 @@ export interface GameState {
   lastTrickWinnerIndex: number | null;
   winnerId: number | null;
   scores: ScoreEntry[] | null;
-  errorMessage: string | null;
+  errorMessage: I18nText | null;
   actionLog: ActionLogEntry[];
+  /** Wall-clock ms when the current player's turn began (PLAYING only). */
+  turnStartedAt: number | null;
 }

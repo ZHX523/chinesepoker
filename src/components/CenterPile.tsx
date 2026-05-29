@@ -1,79 +1,64 @@
-import { useLayoutEffect, useRef, useState } from 'react';
-import { combinationLabel } from '../game/cards';
+import { useLayoutEffect, useState } from 'react';
 import {
   PILE_CARD_OVERLAP,
-  PILE_SHELL_HEIGHT_RATIO,
-  PILE_SHELL_MAX_HEIGHT,
-  PILE_SHELL_MAX_WIDTH,
-  PILE_SHELL_MIN_HEIGHT,
-  PILE_SHELL_MIN_WIDTH,
-  PILE_SHELL_WIDTH_RATIO,
-  computePileCardScale,
-  fitPileShellDimension,
-  pileFiveCardFootprint,
+  pileFootprintFromCardSize,
+  pileLayoutVars,
+  type PileLayoutVars,
 } from '../constants/cardTray';
-import type { PileState } from '../game/types';
+import { useTranslation } from '../i18n/LanguageContext';
+import type { PileState, Player } from '../game/types';
+import { profileIconForPlayer } from '../game/gameLogic';
 import { PlayingCard } from './PlayingCard';
 
 interface CenterPileProps {
   pile: PileState | null;
+  players: Player[];
   isOpeningTurn: boolean;
   isFreeLead?: boolean;
   leadPlayerIndex?: number | null;
   droppable?: boolean;
   isDragOver?: boolean;
   fieldRef: React.RefObject<HTMLDivElement | null>;
-  onDragEnter?: () => void;
-  onDragLeave?: () => void;
-  onDragOver?: (event: React.DragEvent<HTMLDivElement>) => void;
-  onDrop?: (event: React.DragEvent<HTMLDivElement>) => void;
 }
 
-function playerLabel(index: number): string {
-  return index === 0 ? 'You' : `Player ${index + 1}`;
+function playerName(
+  players: Player[],
+  index: number,
+  displayPlayerName: (name: string) => string,
+): string {
+  const raw = players[index]?.name;
+  if (!raw) return displayPlayerName('Player');
+  return displayPlayerName(raw);
 }
-
-const PILE_CARD_SLOT =
-  'center-pile-cards relative z-10 flex min-h-0 w-full flex-1 items-center justify-center overflow-visible';
-
-const PILE_SHELL =
-  'center-pile shrink-0 rounded-xl border border-[#c9a227]/25 bg-[#062f22]/80 shadow-[0_8px_32px_rgba(0,0,0,0.35)]';
 
 const BADGE_CLASS =
-  'shrink-0 rounded-full bg-amber-500/20 px-3 py-0.5 font-serif text-[clamp(0.6rem,1.2vh,0.75rem)] font-bold uppercase tracking-widest text-amber-100';
+  'shrink-0 font-serif text-[length:var(--pile-badge-size)] font-extrabold uppercase tracking-[0.18em] text-amber-300 [text-shadow:0_0_10px_rgba(252,211,77,0.85),0_0_22px_rgba(251,191,36,0.45)]';
 
 const FOOTER_CLASS =
-  'shrink-0 text-[clamp(0.6rem,1.2vh,0.75rem)] font-medium text-emerald-100/85';
+  'shrink-0 text-[length:var(--pile-footer-size)] font-medium text-emerald-100/80';
 
 export function CenterPile({
   pile,
+  players,
   isOpeningTurn,
   isFreeLead = false,
   leadPlayerIndex = null,
   droppable = false,
   isDragOver = false,
   fieldRef,
-  onDragEnter,
-  onDragLeave,
-  onDragOver,
-  onDrop,
 }: CenterPileProps) {
-  const pileShellRef = useRef<HTMLDivElement>(null);
-  const [pileCardScale, setPileCardScale] = useState(1);
-  const [shellSize, setShellSize] = useState({ width: 0, height: 0 });
-
-  const dropHighlight =
-    droppable &&
-    isDragOver &&
-    'border-amber-400/80 bg-amber-500/15 ring-2 ring-amber-400/50';
-
-  const dropIdle =
-    droppable && !isDragOver && 'border-emerald-400/40 ring-1 ring-emerald-300/25';
+  const { t, comboLabel, displayPlayerName } = useTranslation();
+  const [pileLayout, setPileLayout] = useState<PileLayoutVars>(() =>
+    pileLayoutVars(640, 360),
+  );
 
   const hasPile = pile != null;
   const combination = pile?.combination;
   const playedByIndex = pile?.playedByIndex ?? 0;
-  const { width: comboWidth, height: comboHeight } = pileFiveCardFootprint();
+  const lastPlayer = hasPile ? players[playedByIndex] : null;
+  const cardHeight = parseFloat(String(pileLayout['--pile-card-h']));
+  const cardWidth = parseFloat(String(pileLayout['--pile-card-w']));
+  const comboFootprint = pileFootprintFromCardSize(cardWidth, cardHeight);
 
   useLayoutEffect(() => {
     const field = fieldRef.current;
@@ -83,59 +68,42 @@ export function CenterPile({
       const fieldWidth = field.clientWidth;
       const fieldHeight = field.clientHeight;
       if (fieldWidth <= 0 || fieldHeight <= 0) return;
-
-      const shellWidth = fitPileShellDimension(
-        fieldWidth,
-        PILE_SHELL_WIDTH_RATIO,
-        PILE_SHELL_MAX_WIDTH,
-        PILE_SHELL_MIN_WIDTH,
-      );
-      const shellHeight = fitPileShellDimension(
-        fieldHeight,
-        PILE_SHELL_HEIGHT_RATIO,
-        PILE_SHELL_MAX_HEIGHT,
-        PILE_SHELL_MIN_HEIGHT,
-      );
-      setShellSize({ width: shellWidth, height: shellHeight });
-      setPileCardScale(computePileCardScale(shellWidth, shellHeight));
+      setPileLayout(pileLayoutVars(fieldWidth, fieldHeight));
     };
 
     recompute();
     const observer = new ResizeObserver(recompute);
     observer.observe(field);
-
     window.addEventListener('resize', recompute);
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', recompute);
     };
-  }, [fieldRef, comboWidth, comboHeight]);
+  }, [fieldRef]);
 
   const badgeLabel = hasPile && combination
     ? isFreeLead
-      ? 'Free lead'
-      : combinationLabel(combination.type)
+      ? t('pile.freeLead')
+      : comboLabel(combination.type)
     : isOpeningTurn
-      ? 'Opening lead'
-      : 'Center trick';
+      ? t('pile.openingLead')
+      : t('pile.centerTrick');
 
   const footer = hasPile && combination ? (
     isFreeLead && leadPlayerIndex != null ? (
-      <>
-        <span className="text-amber-200">{playerLabel(leadPlayerIndex)}</span> may lead
-      </>
+      t('pile.mayLeadNext', {
+        name: playerName(players, leadPlayerIndex, displayPlayerName),
+      })
     ) : (
-      <>
-        Played by <span className="text-[#f5f0e6]">{playerLabel(playedByIndex)}</span>
-      </>
+      t('pile.beatOrPass')
     )
   ) : (
     <>
-      {isOpeningTurn ? 'Include 3♦ in your play' : 'Play to lead'}
+      {isOpeningTurn ? t('pile.include3D') : t('pile.playToLead')}
       {droppable && (
         <>
           {' '}
-          <span className="text-amber-200/90">· drag cards here</span>
+          <span className="text-amber-200/90">{t('pile.dropHint')}</span>
         </>
       )}
     </>
@@ -143,39 +111,50 @@ export function CenterPile({
 
   return (
     <div
-      ref={pileShellRef}
-      onDragEnter={droppable ? onDragEnter : undefined}
-      onDragLeave={droppable ? onDragLeave : undefined}
-      onDragOver={droppable ? onDragOver : undefined}
-      onDrop={droppable ? onDrop : undefined}
-      style={
-        shellSize.width > 0 && shellSize.height > 0
-          ? { width: shellSize.width, height: shellSize.height }
-          : undefined
-      }
-      className={[
-        'relative flex flex-col items-center justify-center gap-1.5 overflow-visible px-3 py-2.5 text-center backdrop-blur-md',
-        PILE_SHELL,
-        !hasPile ? 'border-emerald-300/35 bg-[#062f22]/75' : '',
-        isFreeLead ? 'ring-1 ring-amber-400/35' : '',
-        dropHighlight,
-        dropIdle,
-      ].join(' ')}
+      style={pileLayout as React.CSSProperties}
+      className="center-pile pointer-events-none relative z-10 flex flex-col items-center justify-center overflow-visible text-center [gap:var(--pile-gap)]"
     >
       <span className={BADGE_CLASS}>{badgeLabel}</span>
 
-      <div className={PILE_CARD_SLOT}>
+      {hasPile && lastPlayer && (
+        <div
+          className="flex max-w-[min(100%,18rem)] items-center gap-2.5 rounded-full border border-[#5c3d2e]/90 bg-[#1a0f0c]/95 px-3 py-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.45)] ring-1 ring-[#c9a227]/40"
+          role="status"
+          aria-label={t('pile.lastPlayedByAria', {
+            name: displayPlayerName(lastPlayer.name),
+          })}
+        >
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3d2418] to-[#2d1510] text-xl ring-2 ring-[#c9a227]/55"
+            aria-hidden
+          >
+            {profileIconForPlayer(lastPlayer)}
+          </span>
+          <div className="min-w-0 text-left">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-400/75">
+              {t('pile.lastPlayedBy')}
+            </p>
+            <p className="truncate font-serif text-sm font-bold leading-tight text-amber-100/95 sm:text-base">
+              {displayPlayerName(lastPlayer.name)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={[
+          'center-pile-cards relative flex items-center justify-center overflow-visible',
+          hasPile && isFreeLead ? 'opacity-70' : '',
+        ].join(' ')}
+      >
         <div
           className={[
-            'relative overflow-visible',
-            hasPile && isFreeLead ? 'opacity-70' : '',
+            'relative overflow-visible transition-[filter] duration-150',
+            droppable && isDragOver
+              ? 'brightness-110 drop-shadow-[0_0_18px_rgba(251,191,36,0.45)]'
+              : '',
           ].join(' ')}
-          style={{
-            width: comboWidth,
-            height: comboHeight,
-            transform: `scale(${pileCardScale})`,
-            transformOrigin: 'center center',
-          }}
+          style={{ width: comboFootprint.width, height: comboFootprint.height }}
         >
           {hasPile && combination ? (
             <div className="absolute bottom-0 left-1/2 inline-flex -translate-x-1/2 items-end justify-center overflow-visible">
@@ -191,10 +170,10 @@ export function CenterPile({
             </div>
           ) : (
             <p
-              className="absolute inset-0 flex items-center justify-center px-3 text-center font-serif text-[clamp(0.7rem,1.4vh,0.9rem)] font-semibold leading-snug text-emerald-50/90"
+              className="absolute inset-0 flex items-center justify-center px-3 text-center font-serif text-[length:var(--pile-hint-size)] font-semibold leading-snug text-emerald-50/75"
               aria-hidden
             >
-              {isOpeningTurn ? 'Drop your opening play' : 'Drop cards to play'}
+              {isOpeningTurn ? t('pile.dropOpening') : t('pile.dropToPlay')}
             </p>
           )}
         </div>

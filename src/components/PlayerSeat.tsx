@@ -11,6 +11,8 @@ import { TrayCardRow } from './TrayCardRow';
 interface PlayerSeatProps {
   player: Player;
   allowHandReorder?: boolean;
+  /** When false, cards cannot be dragged to the center pile (reorder still allowed). */
+  playEnabled?: boolean;
   selectedIds?: Set<string>;
   reservedCombos?: (string[] | null)[];
   onCardClick?: (cardId: string) => void;
@@ -27,6 +29,7 @@ interface PlayerSeatProps {
 export function PlayerSeat({
   player,
   allowHandReorder = false,
+  playEnabled = true,
   selectedIds,
   reservedCombos = [],
   onCardClick,
@@ -36,7 +39,7 @@ export function PlayerSeat({
   onReturnReserveToHand,
 }: PlayerSeatProps) {
   const canPlayInteract = Boolean(onCardClick || onCardDragStart);
-  const canDrag = allowHandReorder || canPlayInteract;
+  const canDrag = allowHandReorder || (canPlayInteract && playEnabled);
 
   const [handScale, setHandScale] = useState(1);
   const handViewportRef = useRef<HTMLDivElement | null>(null);

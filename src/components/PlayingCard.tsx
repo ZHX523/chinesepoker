@@ -6,6 +6,7 @@ import {
   TRAY_CARD_SIZE_CLASS,
 } from '../constants/cardTray';
 import type { Card, Suit } from '../game/types';
+import { useTranslation } from '../i18n/LanguageContext';
 
 const SUIT_SYMBOL: Record<Suit, string> = {
   diamonds: '♦',
@@ -55,6 +56,7 @@ export function PlayingCard({
   onDragStart,
   onDragEnd,
 }: PlayingCardProps) {
+  const { t } = useTranslation();
   const didDragRef = useRef(false);
   const resolvedSize: CardSize = size ?? (small ? 'sm' : 'md');
   const sizeClass = SIZE_CLASSES[resolvedSize];
@@ -105,9 +107,9 @@ export function PlayingCard({
   };
 
   const liftClass = selected
-    ? 'relative z-[100] -translate-y-4 border-amber-500 ring-2 ring-amber-400/70'
+    ? 'relative z-[100] -translate-y-3 border-amber-500 ring-2 ring-amber-400/70 lg:-translate-y-4'
     : onClick
-      ? 'relative hover:z-[100] hover:-translate-y-4 hover:shadow-xl'
+      ? 'relative hover:z-[100] hover:-translate-y-4 hover:shadow-xl active:-translate-y-3 active:shadow-lg lg:active:-translate-y-4'
       : '';
 
   return (
@@ -127,7 +129,10 @@ export function PlayingCard({
         onClick ? 'cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400/60' : 'cursor-default',
       ].join(' ')}
       aria-pressed={onClick ? selected : undefined}
-      aria-label={`${card.rank} of ${card.suit}`}
+      aria-label={t('common.cardAria', {
+        rank: card.rank,
+        suit: t(`suits.${card.suit}`),
+      })}
     >
       <span
         className={`absolute left-1 top-0.5 font-mono leading-none ${SUIT_COLOR[card.suit]}`}

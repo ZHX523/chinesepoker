@@ -13,11 +13,16 @@ interface TableFeltProps {
   humanTurn: boolean;
   isDragOver: boolean;
   seatCounts: { hand: number; reserve: number }[];
+  turnSecondsRemaining?: number | null;
+  turnTimeLimitSec?: number;
+  seatDisconnected?: boolean[];
+  canEditAvatar?: boolean;
+  onAvatarChange?: (index: number) => void;
   statusOverlay?: React.ReactNode;
-  onPileDragEnter: () => void;
-  onPileDragLeave: () => void;
-  onPileDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
-  onPileDrop: (event: React.DragEvent<HTMLDivElement>) => void;
+  onFeltDragEnter: () => void;
+  onFeltDragLeave: () => void;
+  onFeltDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
+  onFeltDrop: (event: React.DragEvent<HTMLDivElement>) => void;
 }
 
 export function TableFelt({
@@ -29,11 +34,16 @@ export function TableFelt({
   humanTurn,
   isDragOver,
   seatCounts,
+  turnSecondsRemaining = null,
+  turnTimeLimitSec = 15,
+  seatDisconnected = [false, false, false, false],
+  canEditAvatar = false,
+  onAvatarChange,
   statusOverlay,
-  onPileDragEnter,
-  onPileDragLeave,
-  onPileDragOver,
-  onPileDrop,
+  onFeltDragEnter,
+  onFeltDragLeave,
+  onFeltDragOver,
+  onFeltDrop,
 }: TableFeltProps) {
   const fieldRef = useRef<HTMLDivElement>(null);
   const feltRef = useRef<HTMLDivElement>(null);
@@ -77,16 +87,26 @@ export function TableFelt({
         <span className="corner-ornament corner-bl" aria-hidden />
         <span className="corner-ornament corner-br" aria-hidden />
 
-        <div ref={feltRef} className="felt-inner relative h-full w-full overflow-visible">
+        <div
+          ref={feltRef}
+          className={[
+            'felt-inner relative h-full w-full overflow-visible',
+            isDragOver && humanTurn ? 'felt-play-target' : '',
+          ].join(' ')}
+        >
           <PlayerProfile
             player={players[1]!}
             displayNumber={3}
             handCount={seatCounts[1]!.hand}
             reserveCount={seatCounts[1]!.reserve}
             isActive={activePlayerIndex === 1}
-            isLocal={false}
             position="top"
             profileScale={profileLayout.scale}
+            turnSecondsRemaining={
+              activePlayerIndex === 1 ? turnSecondsRemaining : null
+            }
+            turnTimeLimitSec={turnTimeLimitSec}
+            isDisconnected={seatDisconnected[1]}
           />
           <PlayerProfile
             player={players[3]!}
@@ -94,10 +114,14 @@ export function TableFelt({
             handCount={seatCounts[3]!.hand}
             reserveCount={seatCounts[3]!.reserve}
             isActive={activePlayerIndex === 3}
-            isLocal={false}
             position="left"
             profileScale={profileLayout.scale}
             layout={profileLayout.sideVertical ? 'vertical' : 'horizontal'}
+            turnSecondsRemaining={
+              activePlayerIndex === 3 ? turnSecondsRemaining : null
+            }
+            turnTimeLimitSec={turnTimeLimitSec}
+            isDisconnected={seatDisconnected[3]}
           />
           <PlayerProfile
             player={players[2]!}
@@ -105,10 +129,14 @@ export function TableFelt({
             handCount={seatCounts[2]!.hand}
             reserveCount={seatCounts[2]!.reserve}
             isActive={activePlayerIndex === 2}
-            isLocal={false}
             position="right"
             profileScale={profileLayout.scale}
             layout={profileLayout.sideVertical ? 'vertical' : 'horizontal'}
+            turnSecondsRemaining={
+              activePlayerIndex === 2 ? turnSecondsRemaining : null
+            }
+            turnTimeLimitSec={turnTimeLimitSec}
+            isDisconnected={seatDisconnected[2]}
           />
           <PlayerProfile
             player={players[0]!}
@@ -116,27 +144,34 @@ export function TableFelt({
             handCount={seatCounts[0]!.hand}
             reserveCount={seatCounts[0]!.reserve}
             isActive={activePlayerIndex === 0}
-            isLocal
             position="bottom"
             profileScale={profileLayout.scale}
+            turnSecondsRemaining={
+              activePlayerIndex === 0 ? turnSecondsRemaining : null
+            }
+            turnTimeLimitSec={turnTimeLimitSec}
+            isDisconnected={seatDisconnected[0]}
+            canEditAvatar={canEditAvatar}
+            onAvatarChange={onAvatarChange}
           />
 
           <div
             ref={fieldRef}
-            className="field-container absolute inset-0 flex items-center justify-center overflow-visible px-4 pt-8 pb-14"
+            className="field-container play-drop-field absolute inset-0 z-[5] flex items-center justify-center overflow-visible px-1 pb-8 pt-4 sm:px-4 sm:pt-8 sm:pb-14"
+            onDragEnter={humanTurn ? onFeltDragEnter : undefined}
+            onDragLeave={humanTurn ? onFeltDragLeave : undefined}
+            onDragOver={humanTurn ? onFeltDragOver : undefined}
+            onDrop={humanTurn ? onFeltDrop : undefined}
           >
             <CenterPile
               fieldRef={fieldRef}
+              players={players}
               pile={pile}
               isOpeningTurn={isOpeningTurn}
               isFreeLead={isFreeLead}
               leadPlayerIndex={isFreeLead ? activePlayerIndex : null}
               droppable={humanTurn}
               isDragOver={isDragOver}
-              onDragEnter={onPileDragEnter}
-              onDragLeave={onPileDragLeave}
-              onDragOver={onPileDragOver}
-              onDrop={onPileDrop}
             />
           </div>
 

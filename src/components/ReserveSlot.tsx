@@ -16,6 +16,7 @@ import {
   startReserveDrag,
 } from '../constants/dragSession';
 import { describeReserveCombo } from '../game/cards';
+import { useTranslation } from '../i18n/LanguageContext';
 import type { Card } from '../game/types';
 import { MAX_CARDS_PER_SLOT } from '../utils/reserve';
 import { TrayCardRow } from './TrayCardRow';
@@ -51,8 +52,9 @@ export function ReserveSlot({
   onReorder,
   onDragEnd,
 }: ReserveSlotProps) {
+  const { t, language } = useTranslation();
   const info =
-    cards.length > 0 && slotComplete ? describeReserveCombo(cards) : null;
+    cards.length > 0 && slotComplete ? describeReserveCombo(cards, language) : null;
   const playable = (info?.playable ?? false) && slotComplete;
   const hasRoom = cards.length < MAX_CARDS_PER_SLOT;
   const [cardsScale, setCardsScale] = useState(1);
@@ -229,22 +231,31 @@ export function ReserveSlot({
 
       <div
         ref={cardsViewportRef}
-        className="flex min-h-0 flex-1 items-center justify-center overflow-visible px-1"
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-visible px-1"
       >
-        <TrayCardRow
-          cards={cards}
-          cardSize="reserve"
-          scale={cardsScale}
-          contentRef={cardsContentRef}
-          enableReorder
-          reorderScope="reserve"
-          onCardDragStart={beginReserveDrag}
-          onCardDragEnd={handleCardDragEnd}
-          onReorder={onReorder}
-          onInterceptReorderDrop={interceptReorderDrop}
-          onInterceptEndDrop={interceptEndDrop}
-          canShowReorderHint={canShowReorderHint}
-        />
+        {cards.length === 0 ? (
+          <p
+            className="px-2 text-center font-serif text-sm font-bold uppercase tracking-wider text-emerald-100/35 sm:text-base"
+            aria-hidden
+          >
+            {t('reserve.emptyHint')}
+          </p>
+        ) : (
+          <TrayCardRow
+            cards={cards}
+            cardSize="reserve"
+            scale={cardsScale}
+            contentRef={cardsContentRef}
+            enableReorder
+            reorderScope="reserve"
+            onCardDragStart={beginReserveDrag}
+            onCardDragEnd={handleCardDragEnd}
+            onReorder={onReorder}
+            onInterceptReorderDrop={interceptReorderDrop}
+            onInterceptEndDrop={interceptEndDrop}
+            canShowReorderHint={canShowReorderHint}
+          />
+        )}
       </div>
     </div>
   );

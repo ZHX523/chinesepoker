@@ -1,3 +1,4 @@
+import { useTranslation } from '../i18n/LanguageContext';
 import type { ScoreEntry } from '../game/types';
 
 interface GameOverModalProps {
@@ -11,6 +12,7 @@ export function GameOverModal({
   winnerName,
   onPlayAgain,
 }: GameOverModalProps) {
+  const { t, displayPlayerName } = useTranslation();
   const sorted = [...scores].sort((a, b) => a.penalty - b.penalty);
 
   return (
@@ -21,25 +23,26 @@ export function GameOverModal({
         aria-labelledby="gameover-title"
       >
         <h2 id="gameover-title" className="text-2xl font-bold text-white">
-          Game Over
+          {t('gameOver.title')}
         </h2>
         <p className="mt-1 text-emerald-300">
-          <span className="font-semibold text-amber-300">{winnerName}</span>{' '}
-          emptied their hand first.
+          {t('gameOver.winnerSubtitle', { name: displayPlayerName(winnerName) })}
         </p>
 
         <table className="mt-6 w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-700 text-slate-400">
-              <th className="pb-2 font-medium">Player</th>
-              <th className="pb-2 font-medium">Cards</th>
-              <th className="pb-2 font-medium text-right">Penalty</th>
+              <th className="pb-2 font-medium">{t('gameOver.player')}</th>
+              <th className="pb-2 font-medium">{t('gameOver.cards')}</th>
+              <th className="pb-2 font-medium text-right">{t('gameOver.penalty')}</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((row) => (
               <tr key={row.playerId} className="border-b border-slate-800">
-                <td className="py-2.5 font-medium text-white">{row.name}</td>
+                <td className="py-2.5 font-medium text-white">
+                  {displayPlayerName(row.name)}
+                </td>
                 <td className="py-2.5 text-slate-300">{row.cardsLeft}</td>
                 <td className="py-2.5 text-right font-mono text-rose-300">
                   {row.penalty}
@@ -49,16 +52,12 @@ export function GameOverModal({
           </tbody>
         </table>
 
-        <p className="mt-4 text-xs text-slate-500">
-          1–9 cards: 1× each · 10–12: 2× each · 13: 3× each
-        </p>
-
         <button
           type="button"
           onClick={onPlayAgain}
           className="mt-6 w-full rounded-xl bg-amber-500 py-3 font-semibold text-slate-900 transition hover:bg-amber-400"
         >
-          Play Again
+          {t('gameOver.playAgain')}
         </button>
       </div>
     </div>

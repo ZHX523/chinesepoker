@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getCardDragData,
   setCardDragData,
@@ -13,11 +13,13 @@ import {
   isReserveDrag,
   startHandDrag,
 } from '../constants/dragSession';
-import type { GameState } from '../game/types';
+import type { GameState, I18nText } from '../game/types';
+import { useTranslateI18n, useTranslation } from '../i18n/LanguageContext';
 import { orderHand } from '../utils/handOrder';
 import { countReservedCards, getReservedIdSet } from '../utils/reserve';
 import { isFreeLeadTurn } from '../game/gameLogic';
 import { ComboReserve } from './ComboReserve';
+import { PassButton } from './PassButton';
 import { PlayerSeat } from './PlayerSeat';
 import { TableFelt } from './TableFelt';
 
@@ -41,7 +43,15 @@ interface GameTableProps {
     insertBefore: boolean,
   ) => void;
   onReturnReserveToHand: (cardIds: string[]) => void;
-  errorMessage: string | null;
+  errorMessage: I18nText | null;
+  turnTimerSeconds: number;
+  spectatorMode?: boolean;
+  forcedSeatCounts?: { hand: number; reserve: number }[];
+  seatDisconnected?: boolean[];
+  canEditAvatar?: boolean;
+  onAvatarChange?: (index: number) => void;
+  onPass?: () => void;
+  passDisabled?: boolean;
 }
 
 export function GameTable({
@@ -56,10 +66,42 @@ export function GameTable({
   onReorderReserveSlot,
   onReturnReserveToHand,
   errorMessage,
+  turnTimerSeconds,
+  spectatorMode = false,
+  forcedSeatCounts,
+  seatDisconnected = [false, false, false, false],
+  canEditAvatar = false,
+  onAvatarChange,
+  onPass,
+  passDisabled = true,
 }: GameTableProps) {
+  const { t, displayPlayerName } = useTranslation();
+  const translateI18n = useTranslateI18n();
   const { players, activePlayerIndex, pile, isOpeningTurn } = state;
+  const [clockMs, setClockMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (state.gamePhase !== 'PLAYING' || state.turnStartedAt == null) return;
+    const id = window.setInterval(() => setClockMs(Date.now()), 200);
+    return () => window.clearInterval(id);
+  }, [state.gamePhase, state.turnStartedAt, state.activePlayerIndex]);
+
+  const turnSecondsRemaining = useMemo(() => {
+    if (state.gamePhase !== 'PLAYING' || state.turnStartedAt == null) {
+      return null;
+    }
+    const elapsed = (clockMs - state.turnStartedAt) / 1000;
+    return Math.max(0, turnTimerSeconds - elapsed);
+  }, [
+    clockMs,
+    state.gamePhase,
+    state.turnStartedAt,
+    turnTimerSeconds,
+  ]);
   const humanTurn =
-    state.gamePhase === 'PLAYING' && activePlayerIndex === 0;
+    !spectatorMode &&
+    state.gamePhase === 'PLAYING' &&
+    activePlayerIndex === 0;
   const isFreeLead = isFreeLeadTurn(state);
   const human = players[0]!;
   const humanHandKey = human.hand.map((c) => c.id).join('|');
@@ -79,16 +121,15 @@ export function GameTable({
   );
   const humanHandCount = human.hand.length - humanReserveCount;
 
-  const seatCounts = useMemo(
-    () =>
-      players.map((p, i) => {
-        if (i === 0) {
-          return { hand: humanHandCount, reserve: humanReserveCount };
-        }
-        return { hand: p.hand.length, reserve: 0 };
-      }),
-    [players, humanHandCount, humanReserveCount],
-  );
+  const seatCounts = useMemo(() => {
+    if (forcedSeatCounts) return forcedSeatCounts;
+    return players.map((p, i) => {
+      if (i === 0) {
+        return { hand: humanHandCount, reserve: humanReserveCount };
+      }
+      return { hand: p.hand.length, reserve: 0 };
+    });
+  }, [players, humanHandCount, humanReserveCount, forcedSeatCounts]);
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [isHandDropTarget, setIsHandDropTarget] = useState(false);
@@ -177,9 +218,10 @@ export function GameTable({
   );
 
   const handlePileDragEnter = useCallback(() => {
+    if (!humanTurn) return;
     dragOverDepth.current += 1;
     setIsDragOver(true);
-  }, []);
+  }, [humanTurn]);
 
   const handlePileDragLeave = useCallback(() => {
     dragOverDepth.current -= 1;
@@ -205,6 +247,8 @@ export function GameTable({
       dragOverDepth.current = 0;
       setIsDragOver(false);
 
+      if (!humanTurn) return;
+
       let ids = getCardDragData(event.dataTransfer);
       if (isReserveDrag()) {
         const combo = getReservePlayIds();
@@ -215,7 +259,7 @@ export function GameTable({
       }
       clearDragSession();
     },
-    [onPlayCards],
+    [humanTurn, onPlayCards],
   );
 
   const showStatus =
@@ -225,11 +269,11 @@ export function GameTable({
     (!humanTurn && state.gamePhase === 'PLAYING');
 
   const statusOverlay = showStatus ? (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[18%] z-30 flex justify-center px-3">
+    <div className="pointer-events-none absolute inset-x-0 bottom-[12%] z-30 flex justify-center px-2 sm:bottom-[18%] sm:px-3">
       <div className="pointer-events-auto max-w-md space-y-1 text-center">
         {humanTurn && isFreeLead && (
           <p className="rounded-md border border-amber-500/50 bg-[#1a0f0c]/92 px-3 py-1.5 text-xs font-medium text-amber-100 backdrop-blur-sm">
-            Free lead — play any valid combo from hand or hold slots.
+            {t('table.freeLeadHint')}
           </p>
         )}
         {humanTurn && errorMessage && (
@@ -237,17 +281,19 @@ export function GameTable({
             className="animate-pulse rounded-md border border-rose-500/50 bg-rose-950/92 px-3 py-1.5 text-xs font-medium text-rose-100 backdrop-blur-sm"
             role="alert"
           >
-            {errorMessage}
+            {translateI18n(errorMessage)}
           </p>
         )}
         {state.gamePhase === 'DEALING' && (
           <p className="rounded-md bg-[#1a0f0c]/92 px-3 py-1.5 text-xs text-emerald-100 backdrop-blur-sm">
-            Dealing cards…
+            {t('table.dealing')}
           </p>
         )}
         {!humanTurn && state.gamePhase === 'PLAYING' && (
           <p className="rounded-md bg-[#1a0f0c]/92 px-3 py-1.5 text-xs text-amber-100/90 backdrop-blur-sm">
-            {players[activePlayerIndex]?.name} is thinking…
+            {t('table.thinking', {
+              name: displayPlayerName(players[activePlayerIndex]?.name ?? ''),
+            })}
           </p>
         )}
       </div>
@@ -255,9 +301,9 @@ export function GameTable({
   ) : null;
 
   return (
-    <div className="game-board-column flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-visible px-2">
-      {/* Tier 1 — table felt ~60% */}
-      <section className="table-felt-tier relative z-10 flex min-h-0 flex-[6] flex-col overflow-visible pt-2">
+    <div className="game-board-column flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-visible px-1 lg:px-2">
+      {/* Tier 1 — table felt */}
+      <section className="table-felt-tier relative z-10 flex min-h-0 flex-[5] flex-col overflow-visible pt-1 lg:flex-[6] lg:pt-2">
         <TableFelt
           players={players}
           activePlayerIndex={activePlayerIndex}
@@ -267,16 +313,55 @@ export function GameTable({
           humanTurn={humanTurn}
           isDragOver={isDragOver}
           seatCounts={seatCounts}
+          turnSecondsRemaining={turnSecondsRemaining}
+          turnTimeLimitSec={turnTimerSeconds}
+          seatDisconnected={seatDisconnected}
+          canEditAvatar={canEditAvatar}
+          onAvatarChange={onAvatarChange}
           statusOverlay={statusOverlay}
-          onPileDragEnter={handlePileDragEnter}
-          onPileDragLeave={handlePileDragLeave}
-          onPileDragOver={handlePileDragOver}
-          onPileDrop={handlePileDrop}
+          onFeltDragEnter={handlePileDragEnter}
+          onFeltDragLeave={handlePileDragLeave}
+          onFeltDragOver={handlePileDragOver}
+          onFeltDrop={handlePileDrop}
         />
       </section>
 
-      {/* Tier 2 — hand tray ~20% */}
-      <section className="hand-tier relative z-20 flex min-h-0 flex-[2] flex-col overflow-visible py-1">
+      {!spectatorMode && humanTurn && state.gamePhase === 'PLAYING' && onPass && (
+        <div className="safe-area-bottom flex shrink-0 items-stretch justify-center gap-2 px-2 py-1.5 md:hidden">
+          <button
+            type="button"
+            disabled={selectedIds.size === 0}
+            onClick={() => onPlayCards(selectedIds)}
+            className={[
+              'min-h-12 flex-1 rounded-xl border px-3 font-serif text-base font-bold tracking-wide transition-colors',
+              selectedIds.size > 0
+                ? 'border-amber-400/70 bg-gradient-to-b from-[#d4af37] to-[#8b6914] text-[#1a0f0c] active:scale-[0.98]'
+                : 'border-[#3d2418] bg-[#1a0f0c]/80 text-amber-100/45',
+            ].join(' ')}
+          >
+            {selectedIds.size > 0
+              ? t('table.playSelected', { count: selectedIds.size })
+              : t('table.playSelectedHint')}
+          </button>
+          <PassButton
+            disabled={passDisabled}
+            onClick={onPass}
+            className="h-12 w-12 shrink-0"
+          />
+        </div>
+      )}
+
+      {spectatorMode && (
+        <div className="shrink-0 px-3 py-2 text-center">
+          <p className="rounded-md border border-sky-500/40 bg-sky-950/80 px-3 py-2 text-sm font-medium text-sky-100">
+            {t('table.spectating')}
+          </p>
+        </div>
+      )}
+
+      {/* Tier 2 — hand tray */}
+      {!spectatorMode && (
+      <section className="hand-tier relative z-20 flex min-h-0 flex-[3] flex-col overflow-visible py-0.5 lg:flex-[2] lg:py-1">
         <div
           className={[
             'hand-tray-rim h-full min-h-0 w-full overflow-visible',
@@ -292,13 +377,14 @@ export function GameTable({
           <span className="corner-ornament corner-bl" aria-hidden />
           <span className="corner-ornament corner-br" aria-hidden />
           <div className="hand-tray-well overflow-visible p-1.5">
-            <p className="shrink-0 px-2 pb-1.5 text-center font-serif text-base font-bold tracking-wide text-amber-100 sm:text-lg">
-              Your Hand
+            <p className="shrink-0 px-2 pb-1 text-center font-serif text-sm font-bold tracking-wide text-amber-100 lg:pb-1.5 lg:text-lg">
+              {t('table.yourHand')}
             </p>
             <div className="hand-tray-cards flex min-h-0 flex-1 flex-col overflow-visible bg-transparent">
               <PlayerSeat
                 player={humanDisplay}
                 allowHandReorder
+                playEnabled={humanTurn}
                 selectedIds={selectedIds}
                 reservedCombos={reservedCombos}
                 onCardClick={onCardClick}
@@ -311,9 +397,11 @@ export function GameTable({
           </div>
         </div>
       </section>
+      )}
 
-      {/* Tier 3 — combo staging dock ~20% */}
-      <section className="flex min-h-0 flex-[2] flex-col overflow-hidden pb-2">
+      {/* Tier 3 — combo staging dock */}
+      {!spectatorMode && (
+      <section className="flex min-h-0 flex-[2] flex-col overflow-hidden pb-1 lg:pb-2">
         <ComboReserve
           slots={reservedCombos}
           hand={human.hand}
@@ -322,6 +410,7 @@ export function GameTable({
           onReserveDragEnd={handleReserveDragEnd}
         />
       </section>
+      )}
     </div>
   );
 }
