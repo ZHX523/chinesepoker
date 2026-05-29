@@ -2,7 +2,12 @@ import type { GameState } from '../game/types';
 import { BOT_NAMES, dealFriendTableGame } from '../game/gameLogic';
 import { MAX_TABLE_PLAYERS, ROOM_STORAGE_PREFIX } from './constants';
 import { encodeRoomSeed, hydrateRoomFromUrlSeed } from './roomSeed';
-import { fetchRemoteRoom, pushRemoteRoom } from './roomRemote';
+import {
+  fetchRemoteRoom,
+  pushRemoteRoom,
+  connectRoomSocket,
+  type RoomSyncSource,
+} from './roomRemote';
 import { getSessionId, getPlayerProfile, savePlayerProfile } from './session';
 import {
   isValidZodiacIndex,
@@ -129,6 +134,17 @@ function readRoomLocal(roomId: string): FriendRoom | null {
   }
 }
 
+export type { RoomSyncSource } from './roomRemote';
+
+/** Prefer the hosted room server so cross-device clients stay in sync. */
+export async function syncRoomFromServer(roomId: string): Promise<FriendRoom | null> {
+  const id = roomId.toUpperCase();
+  const remote = await fetchRemoteRoom(id, normalizeRoom);
+  if (!remote) return readRoomLocal(id);
+  writeRoomLocal(remote);
+  return remote;
+}
+
 export function readRoom(roomId: string): FriendRoom | null {
   const local = readRoomLocal(roomId);
   if (local) return local;
@@ -136,6 +152,7 @@ export function readRoom(roomId: string): FriendRoom | null {
   const fromSeed = hydrateRoomFromUrlSeed(roomId, normalizeRoom);
   if (fromSeed) {
     writeRoomLocal(fromSeed);
+    void pushRemoteRoom(fromSeed);
     return fromSeed;
   }
 
@@ -148,32 +165,29 @@ function writeRoomLocal(room: FriendRoom): void {
 
 export function writeRoom(room: FriendRoom): void {
   writeRoomLocal(room);
-  pushRemoteRoom(room);
+  void pushRemoteRoom(room);
 }
 
-/** Load room from localStorage, URL seed, or dev sync API (for other browsers). */
 export async function ensureRoomLoaded(roomId: string): Promise<FriendRoom | null> {
   const id = roomId.toUpperCase();
-  const existing = readRoom(id);
-  if (existing) return existing;
-
   const remote = await fetchRemoteRoom(id, normalizeRoom);
   if (remote) {
     writeRoomLocal(remote);
     return remote;
   }
 
+  const existing = readRoomLocal(id);
+  if (existing) return existing;
+
   const fromSeed = hydrateRoomFromUrlSeed(id, normalizeRoom);
   if (fromSeed) {
     writeRoomLocal(fromSeed);
-    pushRemoteRoom(fromSeed);
+    void pushRemoteRoom(fromSeed);
     return fromSeed;
   }
 
   return null;
 }
-
-export type RoomSyncSource = 'poll' | 'storage';
 
 export function subscribeRoom(
   roomId: string,
@@ -182,7 +196,10 @@ export function subscribeRoom(
   const id = roomId.toUpperCase();
   let remotePullBusy = false;
 
-  const emit = (source: RoomSyncSource) => onChange(readRoom(id), source);
+  const applyRemote = (room: FriendRoom, source: RoomSyncSource) => {
+    writeRoomLocal(room);
+    onChange(room, source);
+  };
 
   const pullRemote = async () => {
     if (remotePullBusy) return;
@@ -190,27 +207,43 @@ export function subscribeRoom(
     try {
       const remote = await fetchRemoteRoom(id, normalizeRoom);
       if (remote) {
-        writeRoomLocal(remote);
-        onChange(remote, 'poll');
+        applyRemote(remote, 'poll');
         return;
       }
     } finally {
       remotePullBusy = false;
     }
-    emit('poll');
+    const local = readRoomLocal(id);
+    if (local) onChange(local, 'poll');
+    else onChange(null, 'poll');
   };
 
   const onStorage = (event: StorageEvent) => {
-    if (event.key === storageKey(id)) emit('storage');
+    if (event.key === storageKey(id)) {
+      const local = readRoomLocal(id);
+      if (local) onChange(local, 'storage');
+    }
   };
 
   window.addEventListener('storage', onStorage);
-  const interval = window.setInterval(() => void pullRemote(), 800);
+
+  const stopSocket = connectRoomSocket(
+    id,
+    (room) => {
+      applyRemote(normalizeRoom(room), 'ws');
+    },
+    (connected) => {
+      if (connected) void pullRemote();
+    },
+  );
+
+  const interval = window.setInterval(() => void pullRemote(), 4000);
   void pullRemote();
 
   return () => {
     window.removeEventListener('storage', onStorage);
     window.clearInterval(interval);
+    stopSocket();
   };
 }
 
@@ -251,11 +284,13 @@ export function createFriendRoom(hostName: string): FriendRoom {
   return room;
 }
 
-export function joinFriendRoom(
+export async function joinFriendRoom(
   roomId: string,
   playerName: string,
-): { room: FriendRoom; asSpectator?: boolean } | { error: string } {
-  const room = readRoom(roomId);
+): Promise<
+  { room: FriendRoom; asSpectator?: boolean } | { error: string }
+> {
+  const room = await syncRoomFromServer(roomId);
   if (!room) {
     return { error: 'room.invalidLinkShort' };
   }
@@ -286,7 +321,7 @@ export function joinFriendRoom(
 
   const openSeat = room.seats.findIndex((seat) => seat == null);
   if (room.status === 'playing' || openSeat === -1) {
-    return joinAsSpectator(roomId, playerName);
+    return await joinAsSpectator(roomId, playerName);
   }
 
   const now = Date.now();
@@ -314,13 +349,11 @@ export function joinFriendRoom(
   return { room };
 }
 
-export function joinAsSpectator(
+export async function joinAsSpectator(
   roomId: string,
   playerName: string,
-):
-  | { room: FriendRoom; asSpectator?: boolean }
-  | { error: string } {
-  const room = readRoom(roomId);
+): Promise<{ room: FriendRoom; asSpectator?: boolean } | { error: string }> {
+  const room = await syncRoomFromServer(roomId);
   if (!room) {
     return { error: 'room.invalidLinkShort' };
   }

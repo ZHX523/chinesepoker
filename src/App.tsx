@@ -304,7 +304,7 @@ export default function App() {
         setJoinError('room.invalidLink');
         return;
       }
-      const result = joinFriendRoom(inviteRoomId, name);
+      const result = await joinFriendRoom(inviteRoomId, name);
       if ('error' in result) {
         setJoinError(result.error);
         return;

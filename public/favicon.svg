@@ -1,66 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Two of spades">
   <defs>
-    <linearGradient id="card-face" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="face" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#fffef9" />
-      <stop offset="55%" stop-color="#f5f0e6" />
-      <stop offset="100%" stop-color="#e8dfd0" />
+      <stop offset="100%" stop-color="#ebe3d4" />
     </linearGradient>
     <path
       id="spade"
-      d="M0 -5.2C-3.2 -1.4 -4.6 0.2 -4.6 2.2c0 1.8 1.3 3.1 4.6 3.1s4.6-1.3 4.6-3.1c0-2-1.4-3.6-4.6-6.3zm-1.2 6.3l-1.1 3.4h4.6l-1.1-3.4z"
+      d="M0 -6C-3.6 -1.6 -5 1.2 -5 3.4c0 2.1 1.5 3.6 5 3.6s5-1.5 5-3.6C0 1.2-1.4-1.6-5-6zm-1.3 7.2L-6.6 11h5.2L-1.3 1.2z"
     />
   </defs>
 
-  <rect width="32" height="32" rx="6" fill="#0d1412" />
+  <rect width="32" height="32" rx="7" fill="#0d1412" />
 
   <rect
-    x="5.5"
+    x="4"
     y="3"
-    width="21"
+    width="24"
     height="26"
-    rx="2.8"
-    fill="url(#card-face)"
+    rx="3.5"
+    fill="url(#face)"
     stroke="#c9a227"
-    stroke-opacity="0.45"
-    stroke-width="0.75"
-  />
-  <rect
-    x="7.2"
-    y="4.7"
-    width="17.6"
-    height="22.6"
-    rx="2"
-    fill="none"
-    stroke="#c9a227"
-    stroke-opacity="0.22"
-    stroke-width="0.5"
+    stroke-opacity="0.55"
+    stroke-width="0.85"
   />
 
   <text
-    x="8.4"
-    y="9.2"
+    x="16"
+    y="12.5"
+    text-anchor="middle"
     fill="#0f172a"
     font-family="Georgia, 'Times New Roman', serif"
-    font-size="4.6"
+    font-size="9"
     font-weight="700"
   >
     2
   </text>
-  <use href="#spade" x="9.8" y="12.2" fill="#0f172a" transform="scale(0.34)" />
 
-  <use href="#spade" x="16" y="18.5" fill="#0f172a" transform="scale(0.95)" />
-
-  <g transform="translate(23.6 24.8) rotate(180)">
-    <text
-      x="0"
-      y="0"
-      fill="#0f172a"
-      font-family="Georgia, 'Times New Roman', serif"
-      font-size="4.6"
-      font-weight="700"
-    >
-      2
-    </text>
-    <use href="#spade" x="1.4" y="3" fill="#0f172a" transform="scale(0.34)" />
-  </g>
+  <use href="#spade" x="16" y="21.5" fill="#0f172a" transform="scale(1.05)" />
 </svg>
